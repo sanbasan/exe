@@ -1,5 +1,4 @@
 export type DraftKind =
-  | 'channel_block'
   | 'channel_review'
   | 'follow_up_task'
   | 'latest_info'

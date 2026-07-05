@@ -138,6 +138,27 @@ export const startScheduledCalls = onSchedule(
   }
 );
 
+// 朝の負荷チェック: ワークスペースの timezone(既定 Asia/Tokyo)で 8:00 に
+// 過負荷の担当者へ自動架電し、エージェントがタスクの引き剥がしを相談する。
+export const startOverloadCalls = onSchedule(
+  {
+    region: REGION,
+    schedule: '0 8 * * *',
+    secrets: startCallSecrets,
+    timeZone: 'Asia/Tokyo',
+  },
+  async (): Promise<void> => {
+    await runScheduledWorkflow({
+      functionName: 'startOverloadCalls',
+      task: async (): Promise<void> => {
+        const composition = createFirebaseServerComposition();
+
+        await composition.workflows.startOverloadCalls({ at: getNow() });
+      },
+    });
+  }
+);
+
 export const finalizeEndedCalls = onSchedule(
   {
     region: REGION,

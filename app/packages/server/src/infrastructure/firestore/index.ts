@@ -8,6 +8,7 @@ import type {
   ChannelRepository,
   ChannelReviewStateRepository,
   DeviceTokenRepository,
+  MeetingRepository,
   OverdueTaskNotificationRepository,
   SignInCodeRepository,
   SlackMemberIndexRepository,
@@ -30,6 +31,7 @@ import {
   createFirestoreChannelReviewStateRepository,
 } from './channel-review-repositories';
 import { createFirestoreDeviceTokenRepository } from './device-token-repository';
+import { createFirestoreMeetingRepository } from './meeting-repository';
 import { createFirestoreOverdueTaskNotificationRepository } from './overdue-task-notification-repository';
 import { createFirestoreSignInCodeRepository } from './sign-in-code-repository';
 import { createFirestoreSlackMemberIndexRepository } from './slack-member-index-repository';
@@ -48,6 +50,7 @@ export interface FirestoreRepositories {
   readonly channelRepository: ChannelRepository;
   readonly channelReviewStateRepository: ChannelReviewStateRepository;
   readonly deviceTokenRepository: DeviceTokenRepository;
+  readonly meetingRepository: MeetingRepository;
   readonly overdueTaskNotificationRepository: OverdueTaskNotificationRepository;
   readonly signInCodeRepository: SignInCodeRepository;
   readonly slackMemberIndexRepository: SlackMemberIndexRepository;
@@ -74,6 +77,7 @@ export const createFirestoreRepositories = ({
     firestore,
   }),
   deviceTokenRepository: createFirestoreDeviceTokenRepository({ firestore }),
+  meetingRepository: createFirestoreMeetingRepository({ firestore }),
   overdueTaskNotificationRepository:
     createFirestoreOverdueTaskNotificationRepository({ firestore }),
   signInCodeRepository: createFirestoreSignInCodeRepository({ firestore }),

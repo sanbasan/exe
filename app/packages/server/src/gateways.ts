@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Gateway interfaces are kept together as one server-boundary contract. */
 import type {
   CallSummaryChannelUpdate,
   ChannelBlockCreatedFromCallMessageReference,
@@ -59,6 +60,23 @@ export interface GBrainAdminGateway {
     readonly name: string;
     readonly workspaceId: string;
   }) => Promise<boolean>;
+}
+
+// Writes to the multi-tenant GBrain router (bearer = the ingest token).
+// Implementations must be safe to call unconditionally: when GBrain is not
+// configured the gateway no-ops.
+export interface GBrainIngestGateway {
+  readonly extractFacts: (params: {
+    readonly sessionId?: string;
+    readonly text: string;
+    readonly workspaceId: string;
+  }) => Promise<void>;
+  readonly ingestPage: (params: {
+    readonly markdown: string;
+    readonly slug: string;
+    readonly workspaceId: string;
+  }) => Promise<void>;
+  readonly isEnabled: () => boolean;
 }
 
 export interface SlackGateway {
@@ -248,6 +266,41 @@ export interface NotificationGateway {
   readonly updateChannelBlockMessage: (params: {
     readonly block: ChannelBlock;
     readonly deleted?: boolean;
+    readonly workspace: Workspace;
+  }) => Promise<void>;
+  // Posts the meeting anchor ("tasks were created in <title>") to a channel,
+  // then each task card as a reply in the anchor thread. Anchor is posted
+  // even when tasks is empty.
+  readonly sendMeetingTasksCreated: (params: {
+    readonly channelId: string;
+    readonly meetingTitle: string;
+    readonly tasks: readonly Task[];
+    readonly workspace: Workspace;
+  }) => Promise<{
+    readonly anchorTs: string;
+    readonly channelId: string;
+    readonly taskMessages: readonly {
+      readonly messageTs: string;
+      readonly taskId: string;
+      readonly threadTs: string;
+    }[];
+  }>;
+  // Posts a single task card to its channel (web-created tasks without a
+  // meeting anchor).
+  readonly sendTaskCardToChannel: (params: {
+    readonly channelId: string;
+    readonly task: Task;
+    readonly workspace: Workspace;
+  }) => Promise<{ readonly messageTs: string }>;
+  // Posts one dependency notice into each thread target (meeting thread,
+  // the other task's thread, ...).
+  readonly sendTaskDependencyNotices: (params: {
+    readonly blockedTitle: string;
+    readonly blockerTitle: string;
+    readonly targets: readonly {
+      readonly channelId: string;
+      readonly threadTs?: string;
+    }[];
     readonly workspace: Workspace;
   }) => Promise<void>;
   // Posts one channel anchor for tasks created during a call session and then

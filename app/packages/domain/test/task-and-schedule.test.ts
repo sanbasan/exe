@@ -193,7 +193,7 @@ void test('Follow-up task drafts require an assignee before task creation', () =
   );
 });
 
-void test('Work task drafts require assignees and requesters before task creation', () => {
+void test('Work task drafts allow empty assignees and requesters (external tasks)', () => {
   const draft = workTaskDraftSchema.parse({
     assigneeSlackUserIds: [ASSIGNEE_SLACK_USER_ID],
     channelId: 'C_TARGET',
@@ -209,39 +209,23 @@ void test('Work task drafts require assignees and requesters before task creatio
   });
   const unassignedDraft: WorkTaskDraft = workTaskDraftSchema.parse({
     assigneeSlackUserIds: [],
-    requesterSlackUserIds: [REQUESTER_SLACK_USER_ID],
-    title: 'Find owner',
-  });
-  const noRequesterDraft: WorkTaskDraft = workTaskDraftSchema.parse({
-    assigneeSlackUserIds: [ASSIGNEE_SLACK_USER_ID],
     requesterSlackUserIds: [],
-    title: 'Find requester',
+    title: 'Waiting on client confirmation',
+  });
+  const externalTask = createWorkTaskFromDraft({
+    draft: unassignedDraft,
+    id: 'work_task_4',
+    now: NOW,
+    workspaceId: WORKSPACE_ID,
   });
 
   assert.equal(task.kind, 'work');
   assert.deepEqual(task.assigneeSlackUserIds, [ASSIGNEE_SLACK_USER_ID]);
   assert.equal(task.channelId, 'C_TARGET');
   assert.equal(task.dueAt, '2026-06-20T09:00:00.000Z');
-  assert.throws(
-    () =>
-      createWorkTaskFromDraft({
-        draft: unassignedDraft,
-        id: 'work_task_4',
-        now: NOW,
-        workspaceId: WORKSPACE_ID,
-      }),
-    /Work task requires assigneeSlackUserIds/u
-  );
-  assert.throws(
-    () =>
-      createWorkTaskFromDraft({
-        draft: noRequesterDraft,
-        id: 'work_task_5',
-        now: NOW,
-        workspaceId: WORKSPACE_ID,
-      }),
-    /Work task requires requesterSlackUserIds/u
-  );
+  assert.deepEqual(externalTask.assigneeSlackUserIds, []);
+  assert.deepEqual(externalTask.requesterSlackUserIds, []);
+  assert.equal(externalTask.status, 'active');
 });
 
 void test('Scheduled calls skip excluded dates and disabled schedules', () => {

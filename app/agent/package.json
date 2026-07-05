@@ -23,6 +23,7 @@
     "@livekit/agents": "^1.4.9",
     "@livekit/agents-plugin-google": "^1.4.9",
     "@livekit/agents-plugin-openai": "^1.4.9",
+    "@livekit/rtc-node": "^0.13.29",
     "@sentry/node": "^10.62.0"
   },
   "devDependencies": {

@@ -264,7 +264,6 @@ const formatChannelReviewItem = ({
   readonly memberNames: ReadonlyMap<string, string>;
 }): string => {
   const {
-    activeBlocks,
     assignedWorkTasks,
     channel,
     otherActiveWorkTasks,
@@ -274,14 +273,6 @@ const formatChannelReviewItem = ({
   const lines: readonly (string | null)[] = [
     `${String(index + 1)}. #${channel.name} (channel ID: ${channel.channelId})`,
     `   - current state: ${channel.latestInfo ?? '(not recorded yet)'}`,
-    activeBlocks.length === 0
-      ? '   - active blocks: none'
-      : `   - active blocks:\n${activeBlocks
-          .map(
-            (block) =>
-              `       • ${block.title}${includeIds ? ` (block ID: ${block.id})` : ''} — ${block.description} | created: ${block.createdAt} by ${formatSlackUsers({ ids: [block.createdBySlackUserId], includeIds, memberNames })}`
-          )
-          .join('\n')}`,
     assignedWorkTasks.length === 0
       ? '   - assigned tasks: none'
       : `   - assigned tasks:\n${assignedWorkTasks

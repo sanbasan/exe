@@ -8,6 +8,7 @@ import type {
   ChannelEvent,
   ChannelReviewState,
   DeviceToken,
+  Meeting,
   OverdueTaskNotification,
   SignInCode,
   SlackMemberIndexEntry,
@@ -22,6 +23,7 @@ export type CallNotificationKind =
   | 'call_summary'
   | 'follow_up_answer'
   | 'missed'
+  | 'overload_call'
   | 'prenotification'
   | 'scheduled_call_due'
   | 'scheduled_call_start';
@@ -191,6 +193,18 @@ export interface ChannelRepository {
     readonly workspaceId: string;
   }) => Promise<readonly Channel[]>;
   readonly upsert: (params: { readonly channel: Channel }) => Promise<void>;
+}
+
+export interface MeetingRepository {
+  readonly create: (params: { readonly meeting: Meeting }) => Promise<void>;
+  readonly getById: (params: {
+    readonly meetingId: string;
+    readonly workspaceId: string;
+  }) => Promise<Meeting | null>;
+  readonly listByWorkspace: (params: {
+    readonly workspaceId: string;
+  }) => Promise<readonly Meeting[]>;
+  readonly update: (params: { readonly meeting: Meeting }) => Promise<void>;
 }
 
 export interface SignInCodeRepository {

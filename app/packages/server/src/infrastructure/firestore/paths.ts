@@ -121,6 +121,19 @@ export const channelReviewStateDocumentPath = ({
   readonly workspaceId: string;
 }): string => `${channelReviewStateCollectionPath(workspaceId)}/${stateId}`;
 
+export const meetingCollectionId = 'meetings';
+
+export const meetingCollectionPath = (workspaceId: string): string =>
+  `${workspaceDocumentPath(workspaceId)}/${meetingCollectionId}`;
+
+export const meetingDocumentPath = ({
+  meetingId,
+  workspaceId,
+}: {
+  readonly meetingId: string;
+  readonly workspaceId: string;
+}): string => `${meetingCollectionPath(workspaceId)}/${meetingId}`;
+
 export const taskCollectionId = 'tasks';
 
 export const taskCollectionPath = (workspaceId: string): string =>

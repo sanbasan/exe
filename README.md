@@ -1,14 +1,16 @@
 # exe
 
-A voice-call AI task assistant. You talk to it on a phone call; it detects tasks from the
-conversation, manages them in Slack, and follows up. It is built from four deployable parts:
+An AI task assistant. A web app is the task board (Gantt with dependencies, meeting
+recording → transcript → task extraction, Slack sync); a voice agent calls people about
+blocked or overloaded work and updates tasks from the conversation. It is built from a
+few deployable parts:
 
 | Part | Stack | Location |
 |---|---|---|
-| Web app + API | Next.js on Firebase App Hosting | `app/apphosting` |
+| Web app + API | Next.js on Firebase App Hosting (Gantt board, meeting recorder) | `app/apphosting` |
 | Background jobs | Cloud Functions (Node 22) | `app/functions` |
 | Voice agent | LiveKit realtime agent | `app/agent`, deployed via `livekit/` |
-| iOS app | SwiftUI | `ios/exe` |
+| iOS call app | SwiftUI (CallKit) | `ios/exe` |
 | Shared logic | domain / server / slack packages | `app/packages/*` |
 | Memory service (optional) | Node MCP router + Postgres | `gbrain/` |
 
@@ -50,6 +52,7 @@ app, functions, and VM scripts all read them by these exact names:
 | `SENDGRID_API_KEY` | web | SendGrid, for outbound email (optional) |
 | `APNS_AUTH_KEY` / `APNS_KEY_ID` / `APNS_TEAM_ID` | web, functions | Apple Push (`.p8` key + ids), for iOS notifications (optional) |
 | `GBRAIN_ROUTER_ADMIN_TOKEN` | web, gbrain | Admin token for the optional memory service |
+| `GBRAIN_ROUTER_INGEST_TOKEN` | web, gbrain | Ingest/extract-facts token for the optional memory service (mapped to `GBRAIN_INGEST_TOKEN`) |
 | `OPENAI_API_KEY` | agent VM | Only if you use the OpenAI realtime provider (optional) |
 
 Leaving an optional secret unset disables that feature (e.g. no APNs → no push; no gbrain token → memory service is skipped).
@@ -62,6 +65,7 @@ every `TODO_...` / `your-project-*` / `example.com` placeholder with your values
 | Value | Where | Example |
 |---|---|---|
 | Firebase project id | `GOOGLE_CLOUD_PROJECT`, `VM_PROJECT` | `my-app-prod` |
+| Web SDK config (browser sign-in) | `FIREBASE_WEBAPP_CONFIG` | the Firebase Web app config JSON (public by design) |
 | App Hosting public URL | `APP_URL`, `NEXT_PUBLIC_APP_URL` | `https://my-app.web.app` |
 | App Hosting backend id | `firebase.json` `backendId`, Makefile | `exe-web-app` (rename if you like) |
 | iOS bundle id | `APNS_BUNDLE_ID` | `com.yourcompany.exe` |
@@ -142,3 +146,7 @@ See [AGENTS.md](AGENTS.md) for the full command reference. Quick version:
 - `make quality` — run every quality gate (app + iOS)
 - `npm --prefix app run check` — app checks; `npm --prefix app run build:all` — build
 - `make -C ios/exe quality` — iOS lint + format-check + simulator build
+
+## License
+
+MIT — see [LICENSE](LICENSE).

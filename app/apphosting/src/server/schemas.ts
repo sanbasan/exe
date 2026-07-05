@@ -35,6 +35,34 @@ export const liveKitTokenRequestSchema = z
   })
   .strict();
 
+export const createMeetingRequestSchema = z
+  .object({
+    audioBase64: z.string().min(1),
+    channelId: z.string().min(1).optional(),
+    durationSeconds: z.number().optional(),
+    mimeType: z.string().min(1),
+    participantSlackUserIds: z.array(z.string().min(1)).optional(),
+  })
+  .strict();
+
+export const createWorkTaskRequestSchema = z
+  .object({
+    assigneeSlackUserIds: z.array(z.string().min(1)).default([]),
+    channelId: z.string().min(1).optional(),
+    description: z.string().min(1).optional(),
+    dueAt: z.string().min(1).optional(),
+    requesterSlackUserIds: z.array(z.string().min(1)).optional(),
+    startAt: z.string().min(1).optional(),
+    title: z.string().min(1),
+  })
+  .strict();
+
+export const addTaskDependencyRequestSchema = z
+  .object({
+    blockerTaskId: z.string().min(1),
+  })
+  .strict();
+
 export const patchChannelRequestSchema = z
   .object({
     assigneeSlackUserIds: z.array(z.string().min(1)).optional(),

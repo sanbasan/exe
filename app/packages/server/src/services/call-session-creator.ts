@@ -19,6 +19,7 @@ import {
   buildCallAgenda,
   callSessionSchema,
   type CallPurpose,
+  type CallTrigger,
 } from '@exe/domain';
 
 const warmUpAgentWorkerBestEffort = ({
@@ -63,6 +64,7 @@ export const createCallSessionCreator = ({
   readonly purpose: CallPurpose;
   readonly scheduledRunAt?: string;
   readonly sessionId?: string;
+  readonly trigger?: CallTrigger;
   readonly userId: string;
   readonly workspaceId: string;
 }) => Promise<CallSessionWithAgenda>) => {
@@ -72,6 +74,7 @@ export const createCallSessionCreator = ({
     purpose,
     scheduledRunAt,
     sessionId: requestedSessionId,
+    trigger,
     userId,
     workspaceId,
   }: {
@@ -80,6 +83,7 @@ export const createCallSessionCreator = ({
     readonly purpose: CallPurpose;
     readonly scheduledRunAt?: string;
     readonly sessionId?: string;
+    readonly trigger?: CallTrigger;
     readonly userId: string;
     readonly workspaceId: string;
   }): Promise<CallSessionWithAgenda> => {
@@ -141,6 +145,7 @@ export const createCallSessionCreator = ({
       purpose,
       ...(scheduledRunAt === undefined ? {} : { scheduledRunAt }),
       status: 'created',
+      ...(trigger === undefined ? {} : { trigger }),
       updatedAt: now,
       userId,
       workspaceId,

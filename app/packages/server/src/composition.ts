@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- Server composition wires all services, repositories, gateways, and workflows together. */
+import type { GBrainQueryGateway } from '#server/infrastructure/gbrain/gbrain-query-gateway';
 import type {
   AuthGateway,
   CallEventRepository,
@@ -13,9 +14,11 @@ import type {
   DeviceTokenRepository,
   EmailGateway,
   GBrainAdminGateway,
+  GBrainIngestGateway,
   IdGenerator,
   LiveKitGateway,
   LiveKitVmGateway,
+  MeetingRepository,
   NotificationGateway,
   OverdueTaskNotificationRepository,
   SignInCodeRepository,
@@ -33,7 +36,9 @@ import {
   createChannelVisibilityService,
   createDeviceTokenService,
   createLiveKitTokenService,
+  createMeetingService,
   createSlackService,
+  createTaskGraphService,
   createTaskService,
   createWorkspaceService,
   type AppReviewSignInConfig,
@@ -48,10 +53,14 @@ import {
   type ChannelVisibilityService,
   type DeviceTokenService,
   type LiveKitTokenService,
+  type MeetingComposer,
+  type MeetingService,
   type SlackService,
+  type TaskGraphService,
   type TaskService,
   type WorkspaceService,
 } from '#server/services';
+import type { HandoffComposer } from '#server/services/handoff-composer';
 import { reportServerError } from '#server/utils';
 import {
   finalizeEndedCalls,
@@ -60,6 +69,7 @@ import {
   sendCallPrenotifications,
   sendScheduledCallDueNotifications,
   sleepIdleLiveKitVm,
+  startOverloadCalls,
   startScheduledCalls,
 } from '#server/workflows';
 import type { CallWorkflowDeps } from '#server/workflows/deps';
@@ -84,8 +94,13 @@ export interface ServerCompositionDeps {
   readonly deviceTokenRepository: DeviceTokenRepository;
   readonly emailGateway: EmailGateway;
   readonly gbrainAdminGateway: GBrainAdminGateway;
+  readonly gbrainIngestGateway: GBrainIngestGateway;
+  readonly gbrainQueryGateway: GBrainQueryGateway;
+  readonly handoffComposer: HandoffComposer;
   readonly idGenerator: IdGenerator;
   readonly encryptionKey?: string;
+  readonly meetingComposer: MeetingComposer;
+  readonly meetingRepository: MeetingRepository;
   readonly liveKitAgentName: string;
   readonly liveKitGateway: LiveKitGateway;
   readonly liveKitRoomNamePrefix: string;
@@ -111,9 +126,11 @@ export interface ServerServices {
   readonly deviceToken: DeviceTokenService;
   readonly latestInfoComposer: CallLatestInfoComposer;
   readonly liveKitToken: LiveKitTokenService;
+  readonly meeting: MeetingService;
   readonly proseComposer: CallProseComposer;
   readonly slack: SlackService;
   readonly task: TaskService;
+  readonly taskGraph: TaskGraphService;
   readonly workspace: WorkspaceService;
 }
 
@@ -130,6 +147,9 @@ export interface ServerWorkflows {
     readonly at: string;
   }) => Promise<void>;
   readonly sleepIdleLiveKitVm: () => Promise<void>;
+  readonly startOverloadCalls: (params: {
+    readonly at: string;
+  }) => Promise<void>;
   readonly startScheduledCalls: (params: {
     readonly at: string;
   }) => Promise<void>;
@@ -167,6 +187,9 @@ const createWorkflowDeps = ({
     ? {}
     : { encryptionKey: deps.encryptionKey }),
   errorReporter: { report: reportServerError },
+  gbrainIngestGateway: deps.gbrainIngestGateway,
+  gbrainQueryGateway: deps.gbrainQueryGateway,
+  handoffComposer: deps.handoffComposer,
   idGenerator: deps.idGenerator,
   liveKitVmAutoStopEnabled: deps.liveKitVmAutoStopEnabled,
   liveKitVmGateway: deps.liveKitVmGateway,
@@ -299,6 +322,34 @@ export const createServerComposition = (
     userProfileRepository: deps.userProfileRepository,
     workspaceRepository: deps.workspaceRepository,
   });
+  const taskGraph = createTaskGraphService({
+    callSessionService: callSession,
+    clock: deps.clock,
+    deviceTokenRepository: deps.deviceTokenRepository,
+    gbrainIngestGateway: deps.gbrainIngestGateway,
+    idGenerator: deps.idGenerator,
+    notificationGateway: deps.notificationGateway,
+    taskRepository: deps.taskRepository,
+    userProfileRepository: deps.userProfileRepository,
+    workspaceRepository: deps.workspaceRepository,
+  });
+  const meeting = createMeetingService({
+    channelRepository: deps.channelRepository,
+    clock: deps.clock,
+    ...(deps.encryptionKey === undefined
+      ? {}
+      : { encryptionKey: deps.encryptionKey }),
+    gbrainIngestGateway: deps.gbrainIngestGateway,
+    idGenerator: deps.idGenerator,
+    meetingComposer: deps.meetingComposer,
+    meetingRepository: deps.meetingRepository,
+    notificationGateway: deps.notificationGateway,
+    slackGateway: deps.slackGateway,
+    taskGraph,
+    taskRepository: deps.taskRepository,
+    userProfileRepository: deps.userProfileRepository,
+    workspaceRepository: deps.workspaceRepository,
+  });
   const workflowDeps = createWorkflowDeps({
     callSessionService: callSession,
     channelService: channel,
@@ -315,9 +366,11 @@ export const createServerComposition = (
       deviceToken,
       latestInfoComposer: deps.callLatestInfoComposer,
       liveKitToken,
+      meeting,
       proseComposer: deps.callProseComposer,
       slack,
       task,
+      taskGraph,
       workspace,
     },
     workflows: {
@@ -333,6 +386,8 @@ export const createServerComposition = (
         sendScheduledCallDueNotifications({ at, deps: workflowDeps }),
       sleepIdleLiveKitVm: (): Promise<void> =>
         sleepIdleLiveKitVm({ deps: workflowDeps }),
+      startOverloadCalls: ({ at }): Promise<void> =>
+        startOverloadCalls({ at, deps: workflowDeps }),
       startScheduledCalls: ({ at }): Promise<void> =>
         startScheduledCalls({ at, deps: workflowDeps }),
     },

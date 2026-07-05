@@ -39,6 +39,13 @@ export const callPurposeSchema = z.enum([
   'scheduled_review',
 ]);
 
+// Why an automatic outbound call was placed. 'blocker': a task started
+// blocking 2+ open tasks. 'overload': the morning load check found the
+// assignee holding too many open tasks. Optional so iOS decoding is
+// unaffected (unknown keys are ignored, new enum values on existing fields
+// would not be).
+export const callTriggerSchema = z.enum(['blocker', 'overload']);
+
 export const callStatusSchema = z.enum([
   'active',
   'created',
@@ -101,6 +108,7 @@ export const callSessionSchema = z
     startedAt: dateTimeSchema.optional(),
     status: callStatusSchema,
     summary: z.string().min(1).optional(),
+    trigger: callTriggerSchema.optional(),
     updatedAt: dateTimeSchema,
     userId: userIdSchema,
     workspaceId: workspaceIdSchema,
@@ -154,6 +162,10 @@ export const callAgendaSchema = z
     // Optional because a linked profile may not have a display name yet.
     speakerName: z.string().min(1).optional(),
     timezone: z.string().min(1),
+    // Server-composed briefing for automatically triggered calls (blocker /
+    // overload): tells the voice agent why the call was placed and what to
+    // walk through. Rendered verbatim into the agent's prompt.
+    triageNote: z.string().min(1).optional(),
     workTasks: z.array(workTaskSchema),
   })
   .strict();
@@ -359,6 +371,8 @@ export type CallSession = z.infer<typeof callSessionSchema>;
 
 export type CallStatus = z.infer<typeof callStatusSchema>;
 
+export type CallTrigger = z.infer<typeof callTriggerSchema>;
+
 export type ChannelOpenWorkTasks = z.infer<typeof channelOpenWorkTasksSchema>;
 
 export type GBrainCallLookupFindings = z.infer<
@@ -447,6 +461,7 @@ export const buildCallAgenda = ({
   speakerName,
   tasks,
   timezone,
+  triageNote,
 }: {
   readonly blocks?: readonly ChannelBlock[];
   readonly channels: readonly Channel[];
@@ -459,6 +474,7 @@ export const buildCallAgenda = ({
   readonly speakerName?: string;
   readonly tasks: readonly Task[];
   readonly timezone: string;
+  readonly triageNote?: string;
 }): CallAgenda => {
   const activeChannels = channels.filter(
     (channel) => channel.status === 'active'
@@ -499,6 +515,7 @@ export const buildCallAgenda = ({
     slackUserId,
     ...(speakerName === undefined ? {} : { speakerName }),
     timezone,
+    ...(triageNote === undefined ? {} : { triageNote }),
     workTasks: openWorkTasks,
   });
 };

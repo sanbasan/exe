@@ -3,18 +3,14 @@ import type { PlainToolSet } from '#agent/assistant/plain-tool';
 import type { CallDataRoom } from '#agent/data-channel';
 import type { DraftRegistry } from '#agent/draft-registry';
 import {
-  recordChannelBlockDraftProposal,
   recordChannelReviewDraftProposal,
   recordLatestInfoDraftProposal,
 } from '#agent/tool-proposals';
 import {
-  channelBlockDraftSchema,
   channelReviewDraftSchema,
   isFarOutNextCheck,
   type CallAgenda,
   type Channel,
-  type ChannelBlock,
-  type ChannelBlockDraftAction,
 } from '@exe/domain';
 import type { ServerComposition } from '@exe/server';
 import { z } from 'zod';
@@ -35,75 +31,6 @@ export interface ChannelToolComposition {
     >;
   };
 }
-
-const REVISABLE_BLOCK_DRAFT_ERROR =
-  'No revisable pending channel-block draft with that draft ID was found. Call list_pending_drafts to check the ID, or omit draftId to record a new draft.';
-
-const BLOCK_DRAFT_ID_DESCRIPTION =
-  'Pass the draft ID returned earlier in this conversation (e.g. "d2") to REVISE that pending block draft instead of recording another one. Omit to record a new draft. When revising, pass the complete new values, not only the changed fields.';
-
-const createBlockParametersSchema = z
-  .object({
-    channelName: z.string().min(1),
-    description: z
-      .string()
-      .min(1)
-      .max(200)
-      .optional()
-      .describe(
-        'Optional extra detail about the block. One short sentence at most.'
-      ),
-    draftId: z.string().min(1).optional().describe(BLOCK_DRAFT_ID_DESCRIPTION),
-    title: z
-      .string()
-      .min(1)
-      .max(80)
-      .describe(
-        'Short title of what is blocked, e.g. "API 仕様の確定待ち". Keep it a short phrase.'
-      ),
-  })
-  .strict();
-
-const resolveBlockParametersSchema = z
-  .object({
-    blockId: z
-      .string()
-      .min(1)
-      .describe('Exact block ID shown in the channel blocks list.'),
-  })
-  .strict();
-
-const updateBlockParametersSchema = z
-  .object({
-    blockId: z
-      .string()
-      .min(1)
-      .describe('Exact block ID shown in the channel blocks list.'),
-    description: z
-      .string()
-      .min(1)
-      .max(200)
-      .optional()
-      .describe(
-        'New extra detail about the block. One short sentence at most.'
-      ),
-    title: z
-      .string()
-      .min(1)
-      .max(80)
-      .optional()
-      .describe('New short title of what is blocked. Keep it a short phrase.'),
-  })
-  .strict();
-
-const deleteBlockParametersSchema = z
-  .object({
-    blockId: z
-      .string()
-      .min(1)
-      .describe('Exact block ID shown in the channel blocks list.'),
-  })
-  .strict();
 
 const composeLatestInfoParametersSchema = z
   .object({
@@ -202,83 +129,6 @@ const findChannelByName = ({
     channels.find((channel) => normalizeChannelName(channel.name) === target) ??
     null
   );
-};
-
-// Blocks are shown per channel in the agenda's channel reviews; find the block
-// and the channel it belongs to so a block draft can carry channelId/name.
-const findAgendaBlock = ({
-  agenda,
-  blockId,
-}: {
-  readonly agenda: CallAgenda;
-  readonly blockId: string;
-}): { readonly block: ChannelBlock; readonly channel: Channel } | null =>
-  agenda.channelReviews
-    .flatMap((item) =>
-      item.activeBlocks.map((block) => ({ block, channel: item.channel }))
-    )
-    .find((entry) => entry.block.id === blockId) ?? null;
-
-// Reuse the pending block draft for the same (action, blockId) so calling an
-// update/resolve/delete tool again on the same block revises one draft instead
-// of stacking duplicates; otherwise register a fresh one.
-const claimBlockDraftId = ({
-  action,
-  blockId,
-  registry,
-}: {
-  readonly action: ChannelBlockDraftAction;
-  readonly blockId: string;
-  readonly registry: DraftRegistry;
-}): string => {
-  const existing = registry
-    .listOpen()
-    .find(
-      (draft) =>
-        draft.kind === 'channel_block' &&
-        draft.status === 'pending' &&
-        draft.detail['action'] === action &&
-        draft.detail['blockId'] === blockId
-    );
-
-  return (
-    existing?.draftId ??
-    registry.register({
-      detail: { action, blockId },
-      kind: 'channel_block',
-      status: 'pending',
-      summary: '(recording)',
-    })
-  );
-};
-
-// New block drafts are revised only by passing the draftId explicitly (they
-// have no blockId yet). Returns null when the passed draftId is not a revisable
-// pending block draft.
-const claimNewBlockDraftId = ({
-  draftId,
-  registry,
-}: {
-  readonly draftId?: string;
-  readonly registry: DraftRegistry;
-}): string | null => {
-  if (draftId === undefined) {
-    return registry.register({
-      detail: { action: 'create' },
-      kind: 'channel_block',
-      status: 'pending',
-      summary: '(recording)',
-    });
-  }
-
-  const existing = registry.get(draftId);
-
-  return existing !== null &&
-    existing.kind === 'channel_block' &&
-    existing.status === 'pending' &&
-    existing.detail['action'] === 'create'
-    ? draftId
-    : null;
 };
 
 // One channel-review status draft per channel: update_my_channel_status and
@@ -414,108 +264,6 @@ export const buildAssistantChannelTools = ({
     },
     parameters: composeLatestInfoParametersSchema,
   },
-  create_channel_block: {
-    description:
-      "Record a new block for a channel: something blocking progress, such as a client confirmation or another team's review. Call this when the user mentions they are blocked or waiting on something for a channel. Do not tie the block to a specific task; put the blocking dependency in the title and optional description. The block is recorded as a draft applied automatically after the call. Pass draftId to revise an existing pending block draft; when revising, pass the complete new values.",
-    execute: async (rawArgs): Promise<string> => {
-      const args = createBlockParametersSchema.parse(rawArgs);
-      const channel = findChannelByName({
-        channelName: args.channelName,
-        channels: agenda.channels,
-      });
-
-      if (channel === null) {
-        return 'No matching channel was found. Ask the user to confirm the channel name.';
-      }
-
-      const draftId = claimNewBlockDraftId({
-        ...(args.draftId === undefined ? {} : { draftId: args.draftId }),
-        registry,
-      });
-
-      if (draftId === null) {
-        return REVISABLE_BLOCK_DRAFT_ERROR;
-      }
-
-      const draft = channelBlockDraftSchema.parse({
-        action: 'create',
-        channelId: channel.channelId,
-        channelName: channel.name,
-        ...(args.description === undefined
-          ? {}
-          : { description: args.description }),
-        draftId,
-        title: args.title,
-      });
-
-      await recordChannelBlockDraftProposal({
-        composition,
-        draft,
-        room,
-        sessionId,
-        topic,
-        workspaceId,
-      });
-      registry.update({
-        changes: {
-          detail: draft,
-          status: 'pending',
-          summary: `New block "${args.title}" for #${channel.name}`,
-        },
-        draftId,
-      });
-
-      return `Channel block "${args.title}" for #${channel.name} was recorded (draft ${draftId}) and will be applied automatically after the call.`;
-    },
-    parameters: createBlockParametersSchema,
-  },
-  delete_channel_block: {
-    description:
-      'Permanently delete a channel block that should never have been recorded (wrong channel, duplicate, or mis-heard). This is different from resolve_channel_block, which marks a real block as cleared. Confirm with the user before deleting. Pass the exact block ID from the channel blocks list. The deletion is recorded as a draft applied automatically after the call.',
-    execute: async (rawArgs): Promise<string> => {
-      const args = deleteBlockParametersSchema.parse(rawArgs);
-      const found = findAgendaBlock({ agenda, blockId: args.blockId });
-
-      if (found === null) {
-        return 'No matching channel block was found. Check the block ID in the channel blocks list.';
-      }
-
-      const { block, channel } = found;
-      const draftId = claimBlockDraftId({
-        action: 'delete',
-        blockId: args.blockId,
-        registry,
-      });
-      const draft = channelBlockDraftSchema.parse({
-        action: 'delete',
-        blockId: args.blockId,
-        channelId: channel.channelId,
-        channelName: channel.name,
-        draftId,
-        title: block.title,
-      });
-
-      await recordChannelBlockDraftProposal({
-        composition,
-        draft,
-        room,
-        sessionId,
-        topic,
-        workspaceId,
-      });
-      registry.update({
-        changes: {
-          detail: draft,
-          status: 'pending',
-          summary: `Delete block "${block.title}" for #${channel.name}`,
-        },
-        draftId,
-      });
-
-      return `Channel block "${block.title}" for #${channel.name} was recorded to be deleted (draft ${draftId}) after the call.`;
-    },
-    parameters: deleteBlockParametersSchema,
-  },
   record_channel_review: {
     description:
       "Finish checking a channel. Call this once per channel at the END of that channel's discussion. Pass only the next date/time this person will check the channel (nextCheckAt, and nextCheckReason when needed) plus an optional short hint; a prose composer reads the call transcript and composes the status paragraph and self report. nextCheckAt may be a YYYY-MM-DD local date when no exact time is needed. If nextCheckAt is 8+ days out you must include nextCheckReason. The review is recorded as a draft applied automatically after the call.",
@@ -618,53 +366,6 @@ export const buildAssistantChannelTools = ({
     },
     parameters: recordReviewParametersSchema,
   },
-  resolve_channel_block: {
-    description:
-      'Mark a channel block as resolved when the user says the thing they were waiting on has come through. Pass the exact block ID from the channel blocks list. The resolution is recorded as a draft applied automatically after the call.',
-    execute: async (rawArgs): Promise<string> => {
-      const args = resolveBlockParametersSchema.parse(rawArgs);
-      const found = findAgendaBlock({ agenda, blockId: args.blockId });
-
-      if (found === null) {
-        return 'No matching channel block was found. Check the block ID in the channel blocks list.';
-      }
-
-      const { block, channel } = found;
-      const draftId = claimBlockDraftId({
-        action: 'resolve',
-        blockId: args.blockId,
-        registry,
-      });
-      const draft = channelBlockDraftSchema.parse({
-        action: 'resolve',
-        blockId: args.blockId,
-        channelId: channel.channelId,
-        channelName: channel.name,
-        draftId,
-        title: block.title,
-      });
-
-      await recordChannelBlockDraftProposal({
-        composition,
-        draft,
-        room,
-        sessionId,
-        topic,
-        workspaceId,
-      });
-      registry.update({
-        changes: {
-          detail: draft,
-          status: 'pending',
-          summary: `Resolve block "${block.title}" for #${channel.name}`,
-        },
-        draftId,
-      });
-
-      return `Channel block "${block.title}" for #${channel.name} was recorded to be resolved (draft ${draftId}) after the call.`;
-    },
-    parameters: resolveBlockParametersSchema,
-  },
   revise_channel_latest_info_draft: {
     description:
       'Revise a composed latest-info draft when the user asked for wording changes. Pass the draft ID from compose_channel_latest_info and short revisionGuidance hints; a prose composer reads the call transcript and composes the revised draft. The draft — revised or not — is applied automatically after the call, so there is NO separate apply step; use discard_pending_draft if the user does not want it at all. Never write the corrected text yourself.',
@@ -755,61 +456,6 @@ export const buildAssistantChannelTools = ({
       return `Revised latest-info draft for #${detail.channelName} (draft ${draft.draftId}): ${text} — it is recorded to apply automatically after the call.`;
     },
     parameters: reviseLatestInfoDraftParametersSchema,
-  },
-  update_channel_block: {
-    description:
-      'Edit the title or description of an existing channel block when the user corrects or refines what is being waited on. Pass the exact block ID from the channel blocks list and only the fields that change. To mark a block as cleared use resolve_channel_block instead; to remove a mis-recorded block use delete_channel_block. The edit is recorded as a draft applied automatically after the call.',
-    execute: async (rawArgs): Promise<string> => {
-      const args = updateBlockParametersSchema.parse(rawArgs);
-
-      if (args.title === undefined && args.description === undefined) {
-        return 'No change was provided. Pass a new title and/or description.';
-      }
-
-      const found = findAgendaBlock({ agenda, blockId: args.blockId });
-
-      if (found === null) {
-        return 'No matching channel block was found. Check the block ID in the channel blocks list.';
-      }
-
-      const { block, channel } = found;
-      const draftId = claimBlockDraftId({
-        action: 'update',
-        blockId: args.blockId,
-        registry,
-      });
-      const draft = channelBlockDraftSchema.parse({
-        action: 'update',
-        blockId: args.blockId,
-        channelId: channel.channelId,
-        channelName: channel.name,
-        ...(args.description === undefined
-          ? {}
-          : { description: args.description }),
-        draftId,
-        ...(args.title === undefined ? {} : { title: args.title }),
-      });
-
-      await recordChannelBlockDraftProposal({
-        composition,
-        draft,
-        room,
-        sessionId,
-        topic,
-        workspaceId,
-      });
-      registry.update({
-        changes: {
-          detail: draft,
-          status: 'pending',
-          summary: `Update to block "${block.title}" for #${channel.name}`,
-        },
-        draftId,
-      });
-
-      return `The update to channel block "${block.title}" for #${channel.name} was recorded (draft ${draftId}) and will be applied automatically after the call.`;
-    },
-    parameters: updateBlockParametersSchema,
   },
   update_my_channel_status: {
     description:

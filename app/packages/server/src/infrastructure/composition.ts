@@ -13,6 +13,8 @@ import { createCallLatestInfoComposer } from '#server/services/call-latest-info-
 import { createCallOverviewComposer } from '#server/services/call-overview-composer';
 import { createCallProseComposer } from '#server/services/call-prose-composer';
 import { createChannelLatestInfoSynthesizer } from '#server/services/channel-latest-info-synthesizer';
+import { createHandoffComposer } from '#server/services/handoff-composer';
+import { createMeetingComposer } from '#server/services/meeting-composer';
 import { systemClock } from './clock';
 import {
   createGcpLiveKitVmGateway,
@@ -23,6 +25,8 @@ import { getFirebaseApp } from './firebase/app';
 import { createFirebaseAuthGateway } from './firebase/auth';
 import { createFirestoreRepositories } from './firestore';
 import { createGBrainAdminGateway } from './gbrain';
+import { createGBrainIngestGateway } from './gbrain/gbrain-ingest-gateway';
+import { createGBrainQueryGateway } from './gbrain/gbrain-query-gateway';
 import { generateContent } from './gemini';
 import { randomIdGenerator } from './id-generator';
 import { createLiveKitGateway } from './livekit';
@@ -111,6 +115,42 @@ const createLazyLiveKitGateway = ({
   };
 };
 
+const createDefaultNotificationGateway = ({
+  slackGateway,
+  workspaceRepository,
+}: {
+  readonly slackGateway: ReturnType<typeof createSlackGateway>;
+  readonly workspaceRepository: ReturnType<
+    typeof createFirestoreRepositories
+  >['workspaceRepository'];
+}): NotificationGateway =>
+  createNotificationGateway({
+    apns: {
+      bundleId: serverConfig.apns.bundleId,
+      ...(serverConfig.apns.authKey === undefined
+        ? {}
+        : { authKey: serverConfig.apns.authKey }),
+      ...(serverConfig.apns.keyId === undefined
+        ? {}
+        : { keyId: serverConfig.apns.keyId }),
+      ...(serverConfig.apns.teamId === undefined
+        ? {}
+        : { teamId: serverConfig.apns.teamId }),
+    },
+    appUrl: getRequiredConfigValue({
+      label: 'APP_URL',
+      ...(serverConfig.app.publicUrl === undefined
+        ? {}
+        : { value: serverConfig.app.publicUrl }),
+    }),
+    clock: systemClock,
+    ...(serverConfig.security.encryptionKey === undefined
+      ? {}
+      : { encryptionKey: serverConfig.security.encryptionKey }),
+    slackGateway,
+    workspaceRepository,
+  });
+
 export const createFirebaseServerComposition = (params?: {
   readonly notificationGateway?: NotificationGateway;
 }): ServerComposition => {
@@ -128,29 +168,7 @@ export const createFirebaseServerComposition = (params?: {
   });
   const notificationGateway =
     params?.notificationGateway ??
-    createNotificationGateway({
-      apns: {
-        bundleId: serverConfig.apns.bundleId,
-        ...(serverConfig.apns.authKey === undefined
-          ? {}
-          : { authKey: serverConfig.apns.authKey }),
-        ...(serverConfig.apns.keyId === undefined
-          ? {}
-          : { keyId: serverConfig.apns.keyId }),
-        ...(serverConfig.apns.teamId === undefined
-          ? {}
-          : { teamId: serverConfig.apns.teamId }),
-      },
-      appUrl: getRequiredConfigValue({
-        label: 'APP_URL',
-        ...(serverConfig.app.publicUrl === undefined
-          ? {}
-          : { value: serverConfig.app.publicUrl }),
-      }),
-      clock: systemClock,
-      ...(serverConfig.security.encryptionKey === undefined
-        ? {}
-        : { encryptionKey: serverConfig.security.encryptionKey }),
+    createDefaultNotificationGateway({
       slackGateway,
       workspaceRepository: repositories.workspaceRepository,
     });
@@ -213,6 +231,32 @@ export const createFirebaseServerComposition = (params?: {
           : { value: serverConfig.gbrain.baseUrl }),
       }),
     }),
+    gbrainIngestGateway: createGBrainIngestGateway({
+      baseUrl: getRequiredConfigValue({
+        label: 'GBRAIN_BASE_URL',
+        ...(serverConfig.gbrain.baseUrl === undefined
+          ? {}
+          : { value: serverConfig.gbrain.baseUrl }),
+      }),
+      ...(serverConfig.gbrain.ingestToken === undefined
+        ? {}
+        : { ingestToken: serverConfig.gbrain.ingestToken }),
+    }),
+    gbrainQueryGateway: createGBrainQueryGateway({
+      baseUrl: getRequiredConfigValue({
+        label: 'GBRAIN_BASE_URL',
+        ...(serverConfig.gbrain.baseUrl === undefined
+          ? {}
+          : { value: serverConfig.gbrain.baseUrl }),
+      }),
+      ...(serverConfig.gbrain.ingestToken === undefined
+        ? {}
+        : { ingestToken: serverConfig.gbrain.ingestToken }),
+    }),
+    handoffComposer: createHandoffComposer({
+      generate: generateContent,
+      model: serverConfig.gemini.latestInfoModel,
+    }),
     idGenerator: randomIdGenerator,
     liveKitAgentName: serverConfig.livekit.agentName,
     liveKitGateway: createLazyLiveKitGateway({
@@ -222,6 +266,10 @@ export const createFirebaseServerComposition = (params?: {
     liveKitVmAutoStopEnabled: serverConfig.livekitVm.autoStopEnabled,
     liveKitVmGateway,
     liveKitVmIdleGraceMinutes: serverConfig.livekitVm.idleGraceMinutes,
+    meetingComposer: createMeetingComposer({
+      generate: generateContent,
+      model: serverConfig.gemini.meetingModel,
+    }),
     notificationGateway,
     slackGateway,
   });

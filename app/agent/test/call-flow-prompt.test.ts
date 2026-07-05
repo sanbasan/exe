@@ -48,6 +48,8 @@ const baseWorkTask = ({
   completedAt: null,
   createdAt: '2026-06-01T00:00:00.000Z',
   ...(dueAt === undefined ? {} : { dueAt }),
+  dependentTaskIds: [],
+  dependsOnTaskIds: [],
   id,
   kind: 'work',
   requesterSlackUserIds: ['U_REQUESTER'],
@@ -232,7 +234,6 @@ void test('regular review flow covers task reminders, task changes, follow-ups, 
   assert.match(prompt, /no recital of title, value, and reason/);
   assert.match(prompt, /Follow-ups:/);
   assert.match(prompt, /one at a time/);
-  assert.match(prompt, /Blocks:/);
   assert.match(prompt, /Next check:/);
   assert.match(prompt, /wrap up the channel like a human chair/);
   assert.match(prompt, /NEVER narrate system state/);
@@ -264,7 +265,6 @@ void test('prompt groups review by channel and separates other channels', () => 
   assert.match(prompt, /current state:/);
   assert.match(prompt, /requested tasks/);
   assert.match(prompt, /• Requested task — status:/);
-  assert.match(prompt, /active blocks/);
   assert.match(prompt, /# Other Slack Channels/);
   assert.match(prompt, /1\. #other-project \(channel ID: C_OTHER\)/);
   assert.match(prompt, /trigger right away/);
@@ -335,19 +335,6 @@ void test('prompt supports creating work tasks and looking up channel context', 
   assert.match(prompt, /Create a new work task/);
   assert.match(prompt, /the assistant resolves the account itself/);
   assert.match(prompt, /the owner is required/);
-});
-
-void test('prompt records internal waits as status or tasks, not channel blocks', () => {
-  const prompt = buildSystemPrompt({
-    agenda: buildAgenda({ purpose: 'scheduled_review' }),
-  });
-
-  assert.match(prompt, /anything external is blocking progress/);
-  assert.match(prompt, /inside the workspace\/team/);
-  assert.match(
-    prompt,
-    /prefer channel status plus a concrete follow-up\/work task/
-  );
 });
 
 void test('prompt tells the model timezone and allows date-only next checks', () => {

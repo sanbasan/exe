@@ -113,6 +113,9 @@ export const serverConfig = {
   gbrain: {
     adminToken: process.env['GBRAIN_ROUTER_ADMIN_TOKEN'],
     baseUrl: process.env['GBRAIN_BASE_URL'],
+    // Ingest/extract-facts bearer token; when absent the ingest gateway
+    // no-ops so environments without GBrain keep working.
+    ingestToken: process.env['GBRAIN_INGEST_TOKEN'],
   },
   gemini: {
     // Agent VMs only render GOOGLE_API_KEY (shared with the realtime Gemini
@@ -125,6 +128,9 @@ export const serverConfig = {
     // reject (Pro minimum is 128).
     latestInfoModel:
       process.env['GEMINI_LATEST_INFO_MODEL'] ?? 'gemini-3.1-flash-lite',
+    // Full flash tier: meeting recordings are audio-in + long transcription
+    // out, where the lite tier is not reliable enough.
+    meetingModel: process.env['GEMINI_MEETING_MODEL'] ?? 'gemini-2.5-flash',
     model: process.env['GEMINI_MODEL'] ?? 'gemini-3.1-flash-lite',
   },
   livekit: {

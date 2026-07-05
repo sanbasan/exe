@@ -23,6 +23,8 @@ const workTask: Task = {
   channelId: 'C_OWNED',
   completedAt: null,
   createdAt: '2026-06-01T00:00:00.000Z',
+  dependentTaskIds: [],
+  dependsOnTaskIds: [],
   dueAt: '2026-06-20T03:00:00.000Z',
   id: 'task_1',
   kind: 'work',
@@ -67,7 +69,6 @@ void test('assistant prompt carries the recording rules and task lists', () => {
   assert.match(prompt, /never pass \[\]/);
   assert.match(prompt, /list_pending_drafts/);
   assert.match(prompt, /discard_pending_draft/);
-  assert.match(prompt, /EXTERNAL dependency/);
   assert.match(prompt, /nextCheckReason is required/);
   assert.match(prompt, /dueAt: "none"/);
   assert.match(prompt, /API仕様書のレビュー \(task ID: task_1\)/);

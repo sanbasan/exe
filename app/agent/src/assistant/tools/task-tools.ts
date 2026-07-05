@@ -40,6 +40,12 @@ const DRAFT_ID_DESCRIPTION =
 
 const workTaskPatchParametersSchema = z
   .object({
+    assigneeSlackUserIds: z
+      .array(z.string().min(1))
+      .optional()
+      .describe(
+        'New COMPLETE assignee list as Slack member IDs from the members list (a reassignment passes only the new owner). Pass [] to make the task unassigned / external. Omit when assignees do not change.'
+      ),
     draftId: z.string().min(1).optional().describe(DRAFT_ID_DESCRIPTION),
     dueAt: z
       .string()
@@ -217,6 +223,7 @@ const findAgendaTask = ({
 const hasWorkTaskPatchChange = (
   args: z.infer<typeof workTaskPatchParametersSchema>
 ): boolean =>
+  args.assigneeSlackUserIds !== undefined ||
   args.dueAt !== undefined ||
   args.status !== undefined ||
   args.titleHint !== undefined;
@@ -340,6 +347,15 @@ const buildDueAtChange = (dueAt?: string): string | null | undefined =>
 
 const buildWorkTaskChangeSummary = (args: WorkTaskPatchToolArgs): string =>
   [
+    ...(args.assigneeSlackUserIds === undefined
+      ? []
+      : [
+          `assignees → ${
+            args.assigneeSlackUserIds.length === 0
+              ? '(unassigned)'
+              : args.assigneeSlackUserIds.join(', ')
+          }`,
+        ]),
     ...(args.dueAt === undefined ? [] : [`dueAt → ${args.dueAt}`]),
     ...(args.status === undefined ? [] : [`status → ${args.status}`]),
     ...(args.titleHint === undefined
@@ -393,6 +409,9 @@ const buildWorkTaskPatch = ({
 
   return taskPatchSchema.parse({
     after: {
+      ...(args.assigneeSlackUserIds === undefined
+        ? {}
+        : { assigneeSlackUserIds: args.assigneeSlackUserIds }),
       ...(dueAtChange === undefined ? {} : { dueAt: dueAtChange }),
       ...(args.status === undefined ? {} : { status: args.status }),
       ...(title === undefined ? {} : { title }),
@@ -447,6 +466,7 @@ const runWorkTaskPatchProposal = async ({
   const title = args.titleHint === undefined ? undefined : composed.title;
 
   if (
+    args.assigneeSlackUserIds === undefined &&
     args.dueAt === undefined &&
     args.status === undefined &&
     title === undefined
@@ -800,7 +820,7 @@ export const buildAssistantTaskTools = ({
   },
   propose_work_task_patch: {
     description:
-      'Record updates to an existing work task after the user states a concrete change. Pass the exact task ID shown for that task in the Work Tasks list as taskId (the user refers to it by name, never by ID), plus the structured change (dueAt, status) and, when renaming, a short titleHint. Pass dueAt "none" to remove the due date entirely. For a change spanning several tasks, call this once per task. When recording a due-date change, pass a short reasonHint pointing at the reason the user gave — a short hint, not the full sentence; a prose composer reads the call transcript and records the full reason. The recorded change is applied automatically after the call. Pass draftId to revise an existing pending draft; when revising, pass the complete new values.',
+      'Record updates to an existing work task after the user states a concrete change. Pass the exact task ID shown for that task in the Work Tasks list as taskId (the user refers to it by name, never by ID), plus the structured change (dueAt, status, assigneeSlackUserIds for reassignments) and, when renaming, a short titleHint. Pass dueAt "none" to remove the due date entirely. For a change spanning several tasks, call this once per task. When recording a due-date change, pass a short reasonHint pointing at the reason the user gave — a short hint, not the full sentence; a prose composer reads the call transcript and records the full reason. The recorded change is applied automatically after the call. Pass draftId to revise an existing pending draft; when revising, pass the complete new values.',
     execute: async (rawArgs): Promise<string> => {
       const args = workTaskPatchParametersSchema.parse(rawArgs);
       const task = findAgendaTask({ agenda, taskId: args.taskId });

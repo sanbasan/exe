@@ -1,3 +1,17 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-accent: #176b4d;
+  --color-accent-soft: #e6f1ec;
+  --color-ink: #15201d;
+  --color-muted: #52615d;
+  --color-line: #d8e2df;
+  --color-surface: #ffffff;
+  --color-canvas: #f4f8f6;
+  --color-danger: #d84343;
+  --color-warn: #d9822b;
+}
+
 :root {
   color-scheme: light;
   --exe-accent: #176b4d;

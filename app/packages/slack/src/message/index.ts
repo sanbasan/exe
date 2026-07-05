@@ -2,6 +2,8 @@ export * from './admin-setup-required';
 export * from './call-summary';
 export * from './channel-block';
 export * from './follow-up-answer';
+export * from './handoff-note';
+export * from './meeting-tasks';
 export * from './missed-call';
 export * from './overdue-task';
 export * from './task';

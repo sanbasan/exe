@@ -26,7 +26,6 @@ const draftIdParametersSchema = z
 const discardEventTypeByKind: Readonly<
   Partial<Record<DraftKind, DraftDiscardEventType>>
 > = {
-  channel_block: 'channel_block_draft_discarded',
   channel_review: 'channel_review_draft_discarded',
   follow_up_task: 'follow_up_task_draft_discarded',
   latest_info: 'latest_info_draft_discarded',
@@ -58,7 +57,7 @@ export const buildAssistantDraftTools = ({
 }): PlainToolSet => ({
   discard_pending_draft: {
     description:
-      'Discard a pending draft recorded earlier in this conversation so it will NOT be applied after the call. Use this when the user says a recorded task, follow-up, task change, latest-info, channel-block, or channel status/review draft should be cancelled or was recorded by mistake. Pass the exact draft ID. A discarded draft cannot be revived; record a new one instead if needed.',
+      'Discard a pending draft recorded earlier in this conversation so it will NOT be applied after the call. Use this when the user says a recorded task, follow-up, task change, latest-info, or channel status/review draft should be cancelled or was recorded by mistake. Pass the exact draft ID. A discarded draft cannot be revived; record a new one instead if needed.',
     execute: async (rawArgs): Promise<string> => {
       const args = draftIdParametersSchema.parse(rawArgs);
       const draft = registry.get(args.draftId);
@@ -122,7 +121,7 @@ export const buildAssistantDraftTools = ({
   },
   list_pending_drafts: {
     description:
-      'List the drafts recorded so far in this conversation that are still pending (new tasks, follow-ups, task changes, composed latest-info drafts, channel blocks, and channel status/review drafts). Use this when the user asks what has been recorded, wants to change or cancel something recorded earlier, or when you need a draft ID.',
+      'List the drafts recorded so far in this conversation that are still pending (new tasks, follow-ups, task changes, composed latest-info drafts, and channel status/review drafts). Use this when the user asks what has been recorded, wants to change or cancel something recorded earlier, or when you need a draft ID.',
     execute: (): Promise<string> => {
       const drafts = registry.listOpen();
 

@@ -6,6 +6,7 @@ import type {
   CallSchedule,
   CallSession,
   CallStatus,
+  CallTrigger,
 } from '@exe/domain';
 
 export interface CallSessionWithAgenda {
@@ -21,6 +22,15 @@ export interface CallSessionService {
   readonly createManualReviewCall: (params: {
     readonly focusTaskId?: string;
     readonly mode?: 'auto' | 'manual_review' | 'scheduled_review';
+    readonly userId: string;
+    readonly workspaceId: string;
+  }) => Promise<CallSessionWithAgenda>;
+  // Creates a session for a server-initiated (automatically triggered) call.
+  // The caller is responsible for transitioning it to 'ringing' and sending
+  // the VoIP push.
+  readonly createOutboundCall: (params: {
+    readonly focusTaskId?: string;
+    readonly trigger: CallTrigger;
     readonly userId: string;
     readonly workspaceId: string;
   }) => Promise<CallSessionWithAgenda>;

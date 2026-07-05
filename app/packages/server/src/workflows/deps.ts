@@ -1,3 +1,5 @@
+import type { GBrainIngestGateway } from '#server/gateways';
+import type { GBrainQueryGateway } from '#server/infrastructure/gbrain/gbrain-query-gateway';
 import type {
   CallEventRepository,
   CallNotificationRepository,
@@ -22,6 +24,7 @@ import type { CallOverviewComposer } from '#server/services/call-overview-compos
 import type { CallSessionService } from '#server/services/call-session-service';
 import type { ChannelLatestInfoSynthesizer } from '#server/services/channel-latest-info-synthesizer';
 import type { ChannelService } from '#server/services/channel-service';
+import type { HandoffComposer } from '#server/services/handoff-composer';
 import type { ErrorReportContext } from '#server/utils';
 
 export interface WorkflowErrorReport {
@@ -58,6 +61,9 @@ export interface CallWorkflowDeps {
   readonly deviceTokenRepository: DeviceTokenRepository;
   readonly encryptionKey?: string;
   readonly errorReporter: WorkflowErrorReporter;
+  readonly gbrainIngestGateway: GBrainIngestGateway;
+  readonly gbrainQueryGateway: GBrainQueryGateway;
+  readonly handoffComposer: HandoffComposer;
   readonly idGenerator: IdGenerator;
   readonly liveKitVmAutoStopEnabled: boolean;
   readonly liveKitVmGateway: LiveKitVmGateway;

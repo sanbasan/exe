@@ -1,7 +1,6 @@
 import { publishCallData, type CallDataRoom } from '#agent/data-channel';
 import {
   callDataChannelMessageSchema,
-  type ChannelBlockDraft,
   type ChannelReviewDraft,
   type FollowUpTaskDraft,
   type LatestInfoDraft,
@@ -11,7 +10,6 @@ import {
 import type { ServerComposition } from '@exe/server';
 
 export type DraftDiscardEventType =
-  | 'channel_block_draft_discarded'
   | 'channel_review_draft_discarded'
   | 'follow_up_task_draft_discarded'
   | 'latest_info_draft_discarded'
@@ -121,39 +119,6 @@ export const recordLatestInfoDraftProposal = async ({
       callSessionId: sessionId,
       latestInfoDrafts: [draft],
       type: 'latest_info_draft_proposed',
-      workspaceId,
-    },
-    room,
-    topic,
-  }).catch(ignoreDataChannelError);
-};
-
-export const recordChannelBlockDraftProposal = async ({
-  composition,
-  draft,
-  room,
-  sessionId,
-  topic,
-  workspaceId,
-}: {
-  readonly composition: CallEventRecorderComposition;
-  readonly draft: ChannelBlockDraft;
-  readonly room: CallDataRoom;
-  readonly sessionId: string;
-  readonly topic: string;
-  readonly workspaceId: string;
-}): Promise<void> => {
-  await composition.services.callSession.recordEvent({
-    callSessionId: sessionId,
-    payload: { channelBlockDrafts: [draft] },
-    type: 'channel_block_draft_proposed',
-    workspaceId,
-  });
-  await publishCallData({
-    message: {
-      callSessionId: sessionId,
-      channelBlockDrafts: [draft],
-      type: 'channel_block_draft_proposed',
       workspaceId,
     },
     room,

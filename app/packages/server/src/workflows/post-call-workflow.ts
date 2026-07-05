@@ -13,6 +13,7 @@ import {
   getPatchKey,
   getSummary,
 } from './post-call-event-selectors';
+import { composeHandoffForPatchBestEffort } from './post-call-handoff';
 import {
   buildApprovedFollowUpTaskId,
   buildApprovedWorkTaskId,
@@ -98,6 +99,12 @@ const applyApprovedPatch = async ({
   await notifyPatchApplied({
     deps,
     patch,
+    previousTask: task,
+    session,
+    task: updatedTask,
+  });
+  await composeHandoffForPatchBestEffort({
+    deps,
     previousTask: task,
     session,
     task: updatedTask,

@@ -11,6 +11,11 @@ import { buildSignedScheduledCallRunValue } from '#server/utils/slack-scheduled-
 import { sendIncomingCallVoipPushes, type ApnsConfig } from './apns';
 import { sendChannelBlocksCreatedFromCall as sendSlackChannelBlocksCreatedFromCall } from './channel-block-created-from-call';
 import { getPrenotificationMessage, getScheduledCallDueMessage } from './copy';
+import {
+  sendMeetingTasksCreated as sendSlackMeetingTasksCreated,
+  sendTaskCardToChannel as sendSlackTaskCardToChannel,
+  sendTaskDependencyNotices as sendSlackTaskDependencyNotices,
+} from './meeting-notifications';
 import { sendSlackDirectMessage } from './slack';
 import { sendTasksCreatedFromCall as sendSlackTasksCreatedFromCall } from './task-created-from-call';
 import {
@@ -291,6 +296,19 @@ export const createNotificationGateway = ({
       session,
       tokens: selectUniqueTokens({ kind: 'voip', tokens }),
     }),
+  sendMeetingTasksCreated: ({ channelId, meetingTitle, tasks, workspace }) =>
+    sendSlackMeetingTasksCreated({
+      channelId,
+      deps: {
+        clock,
+        ...(encryptionKey === undefined ? {} : { encryptionKey }),
+        slackGateway,
+        workspaceRepository,
+      },
+      meetingTitle,
+      tasks,
+      workspace,
+    }),
   sendMissedCallNotice: ({ session, slackUserId, workspace }): Promise<void> =>
     sendSlackDirectMessage({
       blocks: buildMissedCallBlocks({
@@ -340,6 +358,36 @@ export const createNotificationGateway = ({
       targetRunAt,
       workspace,
       workspaceRepository,
+    }),
+  sendTaskCardToChannel: ({ channelId, task, workspace }) =>
+    sendSlackTaskCardToChannel({
+      channelId,
+      deps: {
+        clock,
+        ...(encryptionKey === undefined ? {} : { encryptionKey }),
+        slackGateway,
+        workspaceRepository,
+      },
+      task,
+      workspace,
+    }),
+  sendTaskDependencyNotices: ({
+    blockedTitle,
+    blockerTitle,
+    targets,
+    workspace,
+  }) =>
+    sendSlackTaskDependencyNotices({
+      blockedTitle,
+      blockerTitle,
+      deps: {
+        clock,
+        ...(encryptionKey === undefined ? {} : { encryptionKey }),
+        slackGateway,
+        workspaceRepository,
+      },
+      targets,
+      workspace,
     }),
   sendTaskPatchThreadNotice: ({
     patch,

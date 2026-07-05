@@ -19,17 +19,36 @@ export const taskStatusSchema = z.enum([
 
 const slackUserIdsSchema = z.array(slackUserIdSchema);
 
+const taskIdsSchema = z.array(z.string().min(1)).default([]);
+
 export const workTaskSchema = z
   .object({
     assigneeSlackUserIds: slackUserIdsSchema,
+    // Set when an automatic blocker call has been placed for this task so the
+    // trigger never re-fires.
+    blockerCallAt: dateTimeSchema.optional(),
     channelId: slackChannelIdSchema.optional(),
     completedAt: dateTimeSchema.nullable().default(null),
     createdAt: dateTimeSchema,
+    // Tasks blocked by this task (downstream). Kept in sync with the other
+    // task's dependsOnTaskIds — always edit both sides via task-dependency.
+    dependentTaskIds: taskIdsSchema,
+    // Tasks this task depends on (upstream blockers).
+    dependsOnTaskIds: taskIdsSchema,
+    // Triage context for agents: how movable/negotiable this task is, why it
+    // exists, anything a rebalancer needs to decide if it can be reassigned.
+    description: z.string().optional(),
     dueAt: dateTimeSchema.optional(),
+    // Handover document composed when an AI-initiated reassignment happens:
+    // current state, next step, materials, gotchas, and open questions for
+    // the previous assignee. Markdown; refreshed as calls answer questions.
+    handoffNote: z.string().optional(),
     id: z.string().min(1),
     kind: z.literal('work'),
     messageTs: slackMessageTsSchema.optional(),
     requesterSlackUserIds: slackUserIdsSchema,
+    sourceMeetingId: z.string().min(1).optional(),
+    startAt: dateTimeSchema.optional(),
     status: taskStatusSchema,
     threadTs: slackMessageTsSchema.optional(),
     title: z.string().min(1),
@@ -68,9 +87,11 @@ export const workTaskPatchSchema = z
   .object({
     assigneeSlackUserIds: slackUserIdsSchema.optional(),
     channelId: slackChannelIdSchema.optional(),
+    description: z.string().nullable().optional(),
     dueAt: dateTimeSchema.nullable().optional(),
     kind: z.literal('work'),
     requesterSlackUserIds: slackUserIdsSchema.optional(),
+    startAt: dateTimeSchema.nullable().optional(),
     status: taskStatusSchema.optional(),
     title: z.string().min(1).optional(),
   })
@@ -125,6 +146,7 @@ export const workTaskDraftSchema = z
   .object({
     assigneeSlackUserIds: slackUserIdsSchema,
     channelId: slackChannelIdSchema.optional(),
+    description: z.string().optional(),
     draftId: draftIdSchema.optional(),
     dueAt: dateTimeSchema.optional(),
     requesterSlackUserIds: slackUserIdsSchema,
@@ -286,6 +308,12 @@ export const applyTaskPatch = ({
       };
       if (patch.after.kind === 'work' && patch.after.dueAt === null) {
         Reflect.deleteProperty(patchedTask, 'dueAt');
+      }
+      if (patch.after.kind === 'work' && patch.after.startAt === null) {
+        Reflect.deleteProperty(patchedTask, 'startAt');
+      }
+      if (patch.after.kind === 'work' && patch.after.description === null) {
+        Reflect.deleteProperty(patchedTask, 'description');
       }
       return normalizeWorkTaskCompletedAt({
         now,

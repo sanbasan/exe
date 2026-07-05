@@ -32,6 +32,7 @@ import {
   getCallSessionOrThrow,
   getEndedAtPatch,
 } from './call-session-utils';
+import { buildCallTriageNote } from './call-triage-note';
 import { listChannelsVisibleToSlackUser } from './channel-access';
 import type { ChannelVisibilityService } from './channel-visibility-service';
 import {
@@ -163,6 +164,12 @@ export const createCallSessionService = ({
         ? allBlocks
         : allBlocks.filter((block) => visibleChannelIds.has(block.channelId));
 
+    const triageNote = buildCallTriageNote({
+      language: workspace.language,
+      session,
+      tasks,
+    });
+
     return buildCallAgenda({
       blocks,
       channels,
@@ -179,6 +186,7 @@ export const createCallSessionService = ({
       reviewStates,
       tasks,
       timezone: workspace.timezone,
+      ...(triageNote === undefined ? {} : { triageNote }),
     });
   };
 
@@ -322,6 +330,19 @@ export const createCallSessionService = ({
         session: activeSession,
       };
     },
+    createOutboundCall: ({
+      focusTaskId,
+      trigger,
+      userId,
+      workspaceId,
+    }): Promise<CallSessionWithAgenda> =>
+      createCall({
+        ...(focusTaskId === undefined ? {} : { focusTaskId }),
+        purpose: 'manual_review',
+        trigger,
+        userId,
+        workspaceId,
+      }),
     createScheduledReviewCall,
     getAgendaForSession,
     getById: getSession,
