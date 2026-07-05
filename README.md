@@ -7,7 +7,9 @@ work off for them.
 <p align="center">
   <img src="images/meeting.png" height="160" alt="Meeting → tasks and dependencies" />
   <img src="images/gantt.png" height="160" alt="Gantt board with dependencies" />
-  <img src="images/call.png" height="160" alt="The agent calling an iPhone" />
+</p>
+<p align="center">
+  <img src="images/call.png" height="240" alt="The agent calling an iPhone" />
 </p>
 
 ## How it works
