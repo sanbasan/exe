@@ -4,6 +4,12 @@
 and when someone is drowning in work, it *calls their phone* and has an AI agent hand the
 work off for them.
 
+<p align="center">
+  <img src="images/meeting.png" height="160" alt="Meeting → tasks and dependencies" />
+  <img src="images/gantt.png" height="160" alt="Gantt board with dependencies" />
+  <img src="images/call.png" height="160" alt="The agent calling an iPhone" />
+</p>
+
 ## How it works
 
 1. **Record a meeting.** Hit record in the web app (or upload audio); exe transcribes it.
