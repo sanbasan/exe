@@ -1,0 +1,43 @@
+{
+  "firestore": {
+    "indexes": "firestore/firestore.indexes.json",
+    "rules": "firestore/firestore.rules"
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "source": "app/functions/dist",
+      "predeploy": [
+        "rm -rf app/functions/dist",
+        "npm --prefix app/functions run build"
+      ]
+    }
+  ],
+  "apphosting": [
+    {
+      "backendId": "exe-web-app",
+      "rootDir": "app/",
+      "ignore": [
+        "**/node_modules",
+        "**/.next",
+        "**/firebase-debug.log",
+        "**/firebase-debug.*.log",
+        "**/service-account.json",
+        "**/.env.local*",
+        "**/tsconfig.tsbuildinfo",
+        "**/next-env.d.ts",
+        "**/.git",
+        "**/.git/**",
+        "ios/**",
+        "gbrain/**",
+        "livekit/**",
+        "manifest/**",
+        "**/dist",
+        "**/dist/**",
+        "**/coverage",
+        "**/coverage/**"
+      ]
+    }
+  ]
+}
