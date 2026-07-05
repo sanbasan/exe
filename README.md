@@ -45,10 +45,25 @@ sits in `app/packages/*`, and an optional long-term memory service lives in `gbr
 
 A realtime voice agent normally **freezes the conversation whenever it makes a tool call** —
 the caller hears dead air while the model runs a function. exe avoids that: the voice agent
-never calls tools itself. It streams the live transcript to a **separate assistant agent**
-(the dotted edge above), which reads the conversation, decides what to do, and runs the
-tools in the background — reassigning tasks, writing the handoff note, posting to Slack.
-The caller keeps talking to a responsive agent while the real work happens off to the side.
+never calls tools itself. It streams the live transcript to a **separate assistant agent**,
+which reads the conversation, decides what to do, and runs the tools in the background —
+reassigning tasks, writing the handoff note, posting to Slack. The caller keeps talking to a
+responsive agent while the real work happens off to the side.
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant V as Voice agent
+    participant A as Assistant agent
+    participant W as Tasks · Slack
+    C->>V: speaks
+    V->>C: responds
+    V-)A: stream transcript (async, no wait)
+    Note over C,V: conversation keeps flowing…
+    A->>W: run tools (reassign, handoff note)
+    A-)V: result ready
+    V->>C: "done — handed it to Sam"
+```
 
 ## Running it yourself
 
