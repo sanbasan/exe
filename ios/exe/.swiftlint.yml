@@ -1,0 +1,177 @@
+strict: true
+
+analyzer_rules:
+  - capture_variable
+  # unused_import / unused_declaration omitted: too many false positives to gate CI on.
+
+opt_in_rules:
+  - force_cast
+  - force_try
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - discouraged_optional_boolean
+  - legacy_objc_type
+  - file_length
+  - function_body_length
+  - type_body_length
+  - cyclomatic_complexity
+  - nesting
+  - function_parameter_count
+  - large_tuple
+  - prefer_self_in_static_references
+  - prefer_self_type_over_type_of_self
+  - private_over_fileprivate
+  - redundant_type_annotation
+  - toggle_bool
+  - empty_count
+  - first_where
+  - flatmap_over_map_reduce
+  - last_where
+  - contains_over_filter_count
+  - contains_over_first_not_nil
+  - reduce_boolean
+  - redundant_nil_coalescing
+  - no_fallthrough_only
+  - strict_fileprivate
+  - explicit_init
+  - fatal_error_message
+  - closure_spacing
+  - operator_usage_whitespace
+  - pattern_matching_keywords
+  - optional_enum_case_matching
+  - shorthand_optional_binding
+  - self_binding
+  - direct_return
+  - unowned_variable_capture
+  - weak_delegate
+  - period_spacing
+  - comma_inheritance
+  - sorted_imports
+  - untyped_error_in_catch
+  - prefer_zero_over_explicit_init
+  - empty_collection_literal
+  - joined_default_parameter
+  - return_value_from_void_function
+  - prohibited_interface_builder
+  - discouraged_assert
+  - yoda_condition
+  - legacy_multiple
+  - multiline_arguments
+  - multiline_parameters
+  - prefer_key_path
+  - sorted_first_last
+  - array_init
+  - collection_alignment
+  - empty_string
+  - convenience_type
+  - superfluous_else
+  - identical_operands
+  - unavailable_function
+  - unhandled_throwing_task
+  - overridden_super_call
+  - prohibited_super_call
+  - reduce_into
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - unneeded_parentheses_in_closure_argument
+  - discouraged_none_name
+  - discouraged_object_literal
+  - prefer_condition_list
+  - non_overridable_class_declaration
+  - raw_value_for_camel_cased_codable_enum
+  - static_operator
+  - literal_expression_end_indentation
+  - closure_end_indentation
+  - discouraged_direct_init
+
+disabled_rules:
+  - todo
+  - opening_brace
+  - switch_case_alignment
+  - trailing_comma
+
+custom_rules:
+  no_print:
+    name: "No print()"
+    regex: '(^|[^a-zA-Z0-9_.])print\s*\('
+    match_kinds:
+      - identifier
+    message: "Use os.Logger instead of print()."
+    severity: error
+  no_nslog:
+    name: "No NSLog()"
+    regex: '\bNSLog\s*\('
+    match_kinds:
+      - identifier
+    message: "Use os.Logger instead of NSLog()."
+    severity: error
+  ui_no_api_client:
+    name: "UI must not reference the API client"
+    regex: '\bAPIClient\b'
+    included: ".*/ExeUI/.*|.*/exe/Screens/.*"
+    message: "UI must go through app composition/service state, not APIClient."
+    severity: error
+  ui_no_urlsession:
+    name: "UI must not use URLSession"
+    regex: '\bURLSession\b'
+    included: ".*/ExeUI/.*|.*/exe/Screens/.*"
+    message: "Networking belongs in ExeAPIClient and app composition."
+    severity: error
+
+file_length:
+  warning: 250
+  error: 300
+
+function_body_length:
+  warning: 40
+  error: 50
+
+type_body_length:
+  warning: 200
+  error: 250
+
+cyclomatic_complexity:
+  warning: 10
+  error: 15
+
+nesting:
+  type_level: 2
+  function_level: 3
+
+function_parameter_count:
+  warning: 3
+  error: 4
+
+large_tuple:
+  warning: 2
+  error: 3
+
+line_length:
+  warning: 120
+  error: 150
+  ignores_comments: true
+
+type_name:
+  min_length: 3
+  max_length: 50
+
+identifier_name:
+  min_length: 2
+  max_length: 50
+  excluded:
+    - id
+    - to
+    - at
+    - by
+    - db
+    - ui
+    - x
+    - y
+
+included:
+  - exe
+  - Packages
+
+excluded:
+  - "*/Tests/*"
+  - "**/.build/*"

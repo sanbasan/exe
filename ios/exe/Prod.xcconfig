@@ -1,0 +1,12 @@
+PRODUCT_BUNDLE_IDENTIFIER = com.example.exe
+APP_DISPLAY_NAME = exe
+API_BASE_URL = https:/$()/api.example.com
+LIVEKIT_WS_URL = wss:/$()/livekit.example.com
+UNIVERSAL_LINK_HOST = app.example.com
+FIREBASE_PLIST_NAME = GoogleService-Info
+APS_ENVIRONMENT = production
+SENTRY_DSN =
+SENTRY_ORG =
+SENTRY_PROJECT =
+SENTRY_TRACES_SAMPLE_RATE = 1.0
+SENTRY_PROFILES_SAMPLE_RATE = 1.0

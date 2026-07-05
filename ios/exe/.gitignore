@@ -1,0 +1,3 @@
+
+# Standalone `swift build` byproducts; only the workspace-level Package.resolved is tracked
+Packages/*/Package.resolved
