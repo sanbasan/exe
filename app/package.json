@@ -1,0 +1,52 @@
+{
+  "name": "exe",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "workspaces": [
+    "agent",
+    "apphosting",
+    "functions",
+    "packages/*"
+  ],
+  "overrides": {
+    "postcss": "^8.5.10",
+    "uuid": "^11.1.1"
+  },
+  "scripts": {
+    "build": "npm -w @exe/apphosting run build",
+    "check": "npm run format:check && npm run type-check && npm run lint && npm run test && npm run lint:configs && npm run scan:secrets && npm run audit:moderate && npm run audit:signatures",
+    "audit:moderate": "tsx --tsconfig ./tsconfig.json scripts/check-audit.ts",
+    "audit:signatures": "npm audit signatures",
+    "format": "prettier --write 'package.json' 'tsconfig*.json' '*.mjs' 'scripts/**/*.ts' && npm run format --workspaces --if-present",
+    "format:check": "prettier --check 'package.json' 'tsconfig*.json' '*.mjs' 'scripts/**/*.ts' && npm run format:check --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:configs": "eslint --config eslint.config.mjs eslint.config.mjs eslint.shared.mjs scripts --max-warnings=0 && tsx --tsconfig ./tsconfig.json scripts/check-eslint-disables.ts",
+    "scan:secrets": "tsx --tsconfig ./tsconfig.json scripts/check-secrets.ts",
+    "test": "npm run test --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "build:all": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@types/node": "^22.19.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-functional": "^9.0.5",
+    "eslint-plugin-import-access": "^3.1.0",
+    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-perfectionist": "^5.7.0",
+    "eslint-plugin-security": "^4.0.0",
+    "eslint-plugin-sonarjs": "^4.0.3",
+    "eslint-plugin-unicorn": "^64.0.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "prettier": "^3.8.3",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
