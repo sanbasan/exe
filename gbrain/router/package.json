@@ -1,0 +1,8 @@
+{
+  "name": "gbrain-router",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "server.mjs",
+  "description": "Multi-tenant router fronting per-workspace GBrain brains (uses only the Node/Bun standard library)."
+}
