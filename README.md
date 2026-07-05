@@ -41,6 +41,8 @@ Data lives in Firestore; auth is Firebase Auth. Gemini powers transcription and 
 extraction; the realtime call runs on Gemini Live (OpenAI realtime optional). Shared logic
 sits in `app/packages/*`, and an optional long-term memory service lives in `gbrain/`.
 
+## Splitting the tools out of the call
+
 A realtime voice agent normally **freezes the conversation whenever it makes a tool call** —
 the caller hears dead air while the model runs a function. exe avoids that: the voice agent
 never calls tools itself. It streams the live transcript to a **separate assistant agent**
