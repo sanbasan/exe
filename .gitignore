@@ -1,0 +1,62 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+firebase-debug.log
+firestore-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.local.example
+.secret.local
+.secret.*
+apphosting.emulator.yaml
+app/**/apphosting.emulator.yaml
+!apphosting.emulator.example.yaml
+!app/**/apphosting.emulator.example.yaml
+.npmrc
+
+# Node / web
+.next/
+.turbo/
+coverage/
+dist/
+node_modules/
+storybook-static/
+.vercel/
+
+# Firebase
+.firebase/
+.firebaserc
+service-account.json
+firebase-adminsdk*.json
+ios/exe/exe/GoogleService-Info.plist
+ios/exe/exe/GoogleService-Info-Dev.plist
+
+# Deployment config (copy the .example files and fill in your values)
+livekit/config.env
+gbrain/config.env
+
+# Security and generated reports
+.security-artifacts/
+*.pem
+*.p8
+
+# Swift / Xcode
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Archives
+*.ipa
+*.xcarchive
+
+# Claude Code worktrees and local state
+.claude/
