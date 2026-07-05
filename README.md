@@ -146,7 +146,3 @@ See [AGENTS.md](AGENTS.md) for the full command reference. Quick version:
 - `make quality` — run every quality gate (app + iOS)
 - `npm --prefix app run check` — app checks; `npm --prefix app run build:all` — build
 - `make -C ios/exe quality` — iOS lint + format-check + simulator build
-
-## License
-
-MIT — see [LICENSE](LICENSE).
