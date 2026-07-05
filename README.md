@@ -21,17 +21,32 @@ all posted back to the right channels.
 
 ## Architecture
 
-| Part | Stack | Location |
-|---|---|---|
-| Web app + API | Next.js on Firebase App Hosting (Gantt board, meeting recorder) | `app/apphosting` |
-| Voice agent | LiveKit realtime agent (the one that calls people) | `app/agent`, deployed via `livekit/` |
-| iOS call app | SwiftUI + CallKit (receives the calls) | `ios/exe` |
-| Background jobs | Cloud Functions — cron calls, reminders (Node 22) | `app/functions` |
-| Shared logic | domain / server / slack packages | `app/packages/*` |
-| Memory service (optional) | Node MCP router + Postgres | `gbrain/` |
+```mermaid
+graph TD
+  U["Team member"] -->|"record meeting"| Web["Web app · Next.js<br/>(app/apphosting)"]
+  Web -->|"audio"| Gem["Gemini<br/>transcribe + extract"]
+  Gem -->|"tasks + dependencies"| FS[("Firestore")]
+  FS -->|"Gantt board"| Web
+  FS <-->|"tasks · handoff notes"| Slack["Slack<br/>system of record"]
+
+  FS -->|"owner overloaded"| Srv["server / Cloud Functions<br/>(app/functions)"]
+  Srv -->|"trigger call"| VA["Voice agent · LiveKit + Gemini Live<br/>(app/agent)"]
+  VA <-->|"CallKit call"| iOS["iPhone app<br/>(ios/exe)"]
+  VA -.->|"live transcript"| Asst["Assistant agent<br/>runs the tools"]
+  Asst -->|"reassign + write handoff"| FS
+  Asst --> Slack
+```
 
 Data lives in Firestore; auth is Firebase Auth. Gemini powers transcription and task
-extraction; the realtime call runs on Gemini Live (OpenAI realtime optional).
+extraction; the realtime call runs on Gemini Live (OpenAI realtime optional). Shared logic
+sits in `app/packages/*`, and an optional long-term memory service lives in `gbrain/`.
+
+A realtime voice agent normally **freezes the conversation whenever it makes a tool call** —
+the caller hears dead air while the model runs a function. exe avoids that: the voice agent
+never calls tools itself. It streams the live transcript to a **separate assistant agent**
+(the dotted edge above), which reads the conversation, decides what to do, and runs the
+tools in the background — reassigning tasks, writing the handoff note, posting to Slack.
+The caller keeps talking to a responsive agent while the real work happens off to the side.
 
 ## Running it yourself
 
