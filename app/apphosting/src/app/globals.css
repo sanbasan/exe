@@ -1,0 +1,139 @@
+:root {
+  color-scheme: light;
+  --exe-accent: #176b4d;
+  --exe-border: #d8e2df;
+  --exe-ink: #15201d;
+  --exe-muted: #52615d;
+  --exe-surface: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(23, 107, 77, 0.1), transparent 30%),
+    linear-gradient(135deg, #f7fbfa 0%, #eef6f4 52%, #f8faf9 100%);
+  color: var(--exe-ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+.page-shell {
+  align-items: center;
+  display: grid;
+  min-height: 100dvh;
+  padding: 28px;
+}
+
+.page-main {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 320px);
+  margin: 0 auto;
+  max-width: 920px;
+  width: 100%;
+}
+
+.page-copy {
+  align-self: center;
+}
+
+.eyebrow {
+  color: var(--exe-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  margin: 0 0 14px;
+}
+
+.title {
+  font-size: clamp(2.4rem, 7vw, 5.8rem);
+  letter-spacing: 0;
+  line-height: 0.92;
+  margin: 0;
+  max-width: 760px;
+}
+
+.body {
+  color: var(--exe-muted);
+  font-size: 1.08rem;
+  line-height: 1.7;
+  margin: 24px 0 0;
+  max-width: 620px;
+}
+
+.secondary {
+  color: #6f7a77;
+  font-size: 0.94rem;
+  line-height: 1.6;
+  margin: 12px 0 0;
+  max-width: 580px;
+}
+
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.primary-action {
+  align-items: center;
+  background: var(--exe-accent);
+  border-radius: 8px;
+  color: white;
+  display: inline-flex;
+  font-weight: 700;
+  min-height: 48px;
+  padding: 0 18px;
+  text-decoration: none;
+}
+
+.asset-panel {
+  align-self: end;
+  background: color-mix(in srgb, var(--exe-surface) 82%, transparent);
+  border: 1px solid var(--exe-border);
+  border-radius: 8px;
+  display: grid;
+  min-height: 320px;
+  place-items: center;
+}
+
+.app-mark {
+  height: auto;
+  width: min(72%, 220px);
+}
+
+@media (max-width: 760px) {
+  .page-shell {
+    align-items: start;
+    padding: 22px;
+  }
+
+  .page-main {
+    gap: 22px;
+    grid-template-columns: 1fr;
+  }
+
+  .asset-panel {
+    min-height: 160px;
+    order: -1;
+  }
+
+  .app-mark {
+    width: 118px;
+  }
+}
