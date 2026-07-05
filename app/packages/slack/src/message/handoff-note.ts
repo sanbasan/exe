@@ -15,6 +15,10 @@ const getHeaderText = dispatcher<Language, [taskTitle: string], string>({
     `:page_facing_up: 「${taskTitle}」の引き継ぎ書を更新しました。`,
 });
 
+// Language-independent Slack mention prefix, joined outside the dispatcher.
+const mentionPrefix = (ids: readonly string[]): string =>
+  ids.length === 0 ? '' : `${ids.map((id) => `<@${id}>`).join(' ')} `;
+
 // Markdown headings don't render in Slack mrkdwn; downgrade them to bold.
 const toMrkdwn = (note: string): string =>
   note
@@ -25,25 +29,30 @@ const toMrkdwn = (note: string): string =>
     .join('\n');
 
 export const buildTaskHandoffNoteFallbackText = ({
+  assigneeSlackUserIds,
   language,
   taskTitle,
 }: {
+  readonly assigneeSlackUserIds?: readonly string[];
   readonly language: Language;
   readonly taskTitle: string;
-}): string => getHeaderText(language)(taskTitle);
+}): string =>
+  `${mentionPrefix(assigneeSlackUserIds ?? [])}${getHeaderText(language)(taskTitle)}`;
 
 export const buildTaskHandoffNoteBlocks = ({
+  assigneeSlackUserIds,
   language,
   note,
   taskTitle,
 }: {
+  readonly assigneeSlackUserIds?: readonly string[];
   readonly language: Language;
   readonly note: string;
   readonly taskTitle: string;
 }): readonly KnownBlock[] => [
   {
     text: {
-      text: getHeaderText(language)(taskTitle),
+      text: `${mentionPrefix(assigneeSlackUserIds ?? [])}${getHeaderText(language)(taskTitle)}`,
       type: 'mrkdwn',
     },
     type: 'section',

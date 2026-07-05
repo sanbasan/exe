@@ -2,12 +2,20 @@
 import type { LatestInfoGenerateContent } from '#server/services/channel-latest-info-synthesizer';
 import type { Language, Task } from '@exe/domain';
 import { isOpenTaskStatus, isWorkTask } from '@exe/domain';
-import { Type, type GenerateContentConfig } from '@google/genai';
+import {
+  FinishReason,
+  Type,
+  type Content,
+  type GenerateContentConfig,
+  type Part,
+} from '@google/genai';
 import { z } from 'zod';
 
-// LLM steps of the recording pipeline: (1) audio → diarized transcript +
-// Circleback-style notes + auto title, (2) transcript + workspace context →
-// task operations (creates / updates / dependency edges) + channel pick.
+// LLM steps of the recording pipeline: (1) audio → diarized plain-text
+// transcript (continued across calls when MAX_TOKENS truncates it),
+// (2) transcript → Circleback-style notes + auto title as small JSON,
+// (3) transcript + workspace context → task operations (creates / updates /
+// dependency edges) + channel pick.
 
 export interface MeetingTranscription {
   readonly decisions: readonly string[];
@@ -27,13 +35,12 @@ export interface MeetingChannelContext {
   readonly name: string;
 }
 
-const transcriptionResponseSchema = z
+const notesResponseSchema = z
   .object({
     decisions: z.array(z.string()).default([]),
     keyPoints: z.array(z.string()).default([]),
     overview: z.string().default(''),
     title: z.string().min(1),
-    transcript: z.string().min(1),
   })
   .strip();
 
@@ -115,8 +122,37 @@ export interface MeetingComposer {
 const buildTranscriptionSystemInstruction = (language: Language): string =>
   (language === 'ja'
     ? [
-        'あなたは会議録音の書記です。渡された音声を処理して、次を日本語で作成してください。',
-        'transcript: 発話を漏らさず文字起こしする。話者を区別し、各行を「Speaker 1: 発言」の形式にする(話者名が分かる場合は名前を使う)。',
+        'あなたは会議録音の書記です。渡された音声を日本語で文字起こししてください。',
+        '発話を漏らさず、話者を区別し、各行を「話者名: 発言」の形式にする(話者名が分からない場合は「Speaker 1」のような番号ラベル)。',
+        '出力は文字起こし本文のみ。JSON・前置き・後書き・見出しは一切書かない。',
+      ]
+    : [
+        'You are the scribe for a meeting recording. Transcribe the audio in English.',
+        'Capture every utterance. Distinguish speakers, one line per utterance in the form "Speaker name: ..." (use numbered labels like "Speaker 1" when the name is unknown).',
+        'Output the transcript text only. No JSON, no preamble, no closing remarks, no headings.',
+      ]
+  ).join('\n');
+
+// gemini-2.5-flash hard-caps a single response at 65536 output tokens.
+// The transcript is plain text on purpose: JSON mode escapes non-ASCII and a
+// single giant string field breaks irrecoverably when MAX_TOKENS truncates
+// it. Truncated transcripts are instead continued across calls (see
+// runTranscription).
+const maxResponseTokens = 65536;
+
+const transcriptionConfig = (language: Language): GenerateContentConfig => ({
+  // Thought tokens count toward maxOutputTokens; disable thinking so long
+  // recordings cannot exhaust the budget before any text is produced.
+  maxOutputTokens: maxResponseTokens,
+  systemInstruction: buildTranscriptionSystemInstruction(language),
+  temperature: 0.2,
+  thinkingConfig: { thinkingBudget: 0 },
+});
+
+const buildNotesSystemInstruction = (language: Language): string =>
+  (language === 'ja'
+    ? [
+        'あなたは会議の書記です。渡された会議の文字起こしから、次を日本語で作成してください。',
         'title: 会議の内容が一目で分かる短いタイトル(30文字以内、日付や「会議」の語は不要)。',
         'overview: 会議全体の要約(2〜3文)。',
         'keyPoints: 重要な論点・共有事項の箇条書き。',
@@ -124,8 +160,7 @@ const buildTranscriptionSystemInstruction = (language: Language): string =>
         '出力は指定の JSON のみ。',
       ]
     : [
-        'You are the scribe for a meeting recording. Process the audio and produce, in English:',
-        'transcript: a complete transcription. Distinguish speakers, one line per utterance in the form "Speaker 1: ..." (use real names when identifiable).',
+        'You are the scribe for a meeting. From the transcript you are given, produce, in English:',
         'title: a short at-a-glance meeting title (max 60 chars, no dates, no the word "meeting").',
         'overview: a 2-3 sentence summary.',
         'keyPoints: bullet list of important points.',
@@ -134,10 +169,8 @@ const buildTranscriptionSystemInstruction = (language: Language): string =>
       ]
   ).join('\n');
 
-const transcriptionConfig = (language: Language): GenerateContentConfig => ({
-  // Thought tokens count toward maxOutputTokens; disable thinking so long
-  // recordings cannot exhaust the budget before any text is produced.
-  maxOutputTokens: 32768,
+const notesConfig = (language: Language): GenerateContentConfig => ({
+  maxOutputTokens: maxResponseTokens,
   responseMimeType: 'application/json',
   responseSchema: {
     properties: {
@@ -145,12 +178,11 @@ const transcriptionConfig = (language: Language): GenerateContentConfig => ({
       keyPoints: { items: { type: Type.STRING }, type: Type.ARRAY },
       overview: { type: Type.STRING },
       title: { type: Type.STRING },
-      transcript: { type: Type.STRING },
     },
-    required: ['title', 'transcript'],
+    required: ['title'],
     type: Type.OBJECT,
   },
-  systemInstruction: buildTranscriptionSystemInstruction(language),
+  systemInstruction: buildNotesSystemInstruction(language),
   temperature: 0.2,
   thinkingConfig: { thinkingBudget: 0 },
 });
@@ -186,7 +218,7 @@ const buildExtractionSystemInstruction = (language: Language): string =>
   ).join('\n');
 
 const extractionConfig = (language: Language): GenerateContentConfig => ({
-  maxOutputTokens: 16384,
+  maxOutputTokens: maxResponseTokens,
   responseMimeType: 'application/json',
   responseSchema: {
     properties: {
@@ -290,6 +322,65 @@ const parseJsonResponse = <Value>({
   /* eslint-enable functional/no-try-statements */
 };
 
+// 20 continuations × 65536 tokens ≈ 1.3M output tokens — effectively
+// unbounded for any real meeting; the cap only stops a pathological loop.
+const maxTranscriptionContinuations = 20;
+
+const continuationPrompt = (language: Language): string =>
+  language === 'ja'
+    ? '文字起こしが途中で切れました。切れた箇所から正確に続きを再開してください。既に書いた行は繰り返さないこと。'
+    : 'The transcript was cut off. Continue exactly from where it stopped. Do not repeat lines already written.';
+
+const runTranscription = async ({
+  accumulated,
+  generate,
+  language,
+  model,
+  requestParts,
+  round,
+}: {
+  readonly accumulated: string;
+  readonly generate: LatestInfoGenerateContent;
+  readonly language: Language;
+  readonly model: string;
+  readonly requestParts: readonly Part[];
+  readonly round: number;
+}): Promise<string> => {
+  const contents: Content[] =
+    accumulated.length === 0
+      ? [{ parts: [...requestParts], role: 'user' }]
+      : [
+          { parts: [...requestParts], role: 'user' },
+          { parts: [{ text: accumulated }], role: 'model' },
+          { parts: [{ text: continuationPrompt(language) }], role: 'user' },
+        ];
+  const response = await generate({
+    config: transcriptionConfig(language),
+    contents,
+    model,
+  });
+  const text = response.text ?? '';
+  const merged =
+    accumulated.length === 0 || text.length === 0
+      ? `${accumulated}${text}`
+      : `${accumulated}\n${text}`;
+  const truncated =
+    response.candidates?.[0]?.finishReason === FinishReason.MAX_TOKENS;
+
+  // On repeated truncation past the cap, keep the partial transcript — a
+  // partial transcript beats failing the whole meeting.
+  return truncated && text.length > 0 && round < maxTranscriptionContinuations
+    ? runTranscription({
+        accumulated: merged,
+        generate,
+        language,
+        model,
+        requestParts,
+        round: round + 1,
+      })
+    : merged;
+};
+
 export const createMeetingComposer = ({
   generate,
   model,
@@ -367,28 +458,38 @@ export const createMeetingComposer = ({
         : language === 'ja'
           ? `\n参加者(この人たちが話しています、名前と Slack ID): ${participantList}。話者を特定できる場合は "Speaker 1" ではなく名前を話者ラベルに使ってください(ID は書かない)。`
           : `\nParticipants (these people are speaking; name and Slack ID): ${participantList}. Use their names as speaker labels instead of "Speaker 1" when identifiable (do not print the IDs).`;
-    const response = await generate({
-      config: transcriptionConfig(language),
-      contents: [
-        {
-          parts: [
-            { inlineData: { data: audioBase64, mimeType } },
-            {
-              text:
-                (language === 'ja'
-                  ? 'この録音を処理してください。'
-                  : 'Process this recording.') + participantsNote,
-            },
-          ],
-          role: 'user',
-        },
-      ],
+    const requestParts: readonly Part[] = [
+      { inlineData: { data: audioBase64, mimeType } },
+      {
+        text:
+          (language === 'ja'
+            ? 'この録音を文字起こししてください。'
+            : 'Transcribe this recording.') + participantsNote,
+      },
+    ];
+    const transcript = await runTranscription({
+      accumulated: '',
+      generate,
+      language,
       model,
+      requestParts,
+      round: 0,
     });
 
-    return parseJsonResponse({
-      schema: transcriptionResponseSchema,
-      ...(response.text === undefined ? {} : { text: response.text }),
+    if (transcript.trim().length === 0) {
+      throw new Error('Model returned no text.');
+    }
+
+    const notesResponse = await generate({
+      config: notesConfig(language),
+      contents: [{ parts: [{ text: transcript }], role: 'user' }],
+      model,
     });
+    const notes = parseJsonResponse({
+      schema: notesResponseSchema,
+      ...(notesResponse.text === undefined ? {} : { text: notesResponse.text }),
+    });
+
+    return { ...notes, transcript };
   },
 });

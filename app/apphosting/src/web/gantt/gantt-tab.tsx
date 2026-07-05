@@ -8,8 +8,11 @@ import {
   sortTasksForDisplay,
 } from '#app/web/gantt-model';
 import {
+  chartFullWidthPx,
   dragEndToIso,
   dragStartToIso,
+  GANTT_COLUMN_WIDTH,
+  GANTT_LIST_WIDTH_PX,
   toLibraryTasks,
 } from '#app/web/gantt/gantt-mapping';
 import { createTaskListComponents } from '#app/web/gantt/task-list';
@@ -17,7 +20,7 @@ import { TaskPanel } from '#app/web/gantt/task-panel';
 import type { WorkTask } from '@exe/domain';
 import { Gantt, ViewMode, type Task as LibraryTask } from 'gantt-task-react';
 import 'gantt-task-react/dist/index.css';
-import { useMemo, useState, type JSX } from 'react';
+import { useMemo, useState, type CSSProperties, type JSX } from 'react';
 
 // Workspace Gantt: gantt-task-react renders the chart (bars, dependency
 // arrows, drag-to-reschedule); our slide-over panel handles all other edits.
@@ -107,6 +110,13 @@ export const GanttTab = ({
       toLibraryTasks({ overloaded: overload.overloaded, tasks: displayTasks }),
     [displayTasks, overload.overloaded]
   );
+  const fullWidthPx = useMemo(
+    () => chartFullWidthPx(libraryTasks),
+    [libraryTasks]
+  );
+  const chartStyle: CSSProperties & Record<string, string> = {
+    '--gantt-width': `${String(fullWidthPx)}px`,
+  };
 
   const openTask = (taskId: string): void => {
     setPanel({ kind: 'edit', taskId });
@@ -173,30 +183,32 @@ export const GanttTab = ({
           No work tasks yet. Create one to start planning.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-line bg-white">
-          <Gantt
-            TaskListHeader={taskList.header}
-            TaskListTable={taskList.table}
-            arrowColor="#52615d"
-            barCornerRadius={4}
-            barFill={62}
-            columnWidth={36}
-            fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
-            fontSize="12px"
-            listCellWidth="320px"
-            onClick={(task) => {
-              openTask(task.id);
-            }}
-            onDateChange={handleDateChange}
-            onDoubleClick={(task) => {
-              openTask(task.id);
-            }}
-            onProgressChange={() => false}
-            rowHeight={48}
-            tasks={[...libraryTasks]}
-            todayColor="rgba(23, 107, 77, 0.08)"
-            viewMode={ViewMode.Day}
-          />
+        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+          <div className="w-(--gantt-width) md:w-auto" style={chartStyle}>
+            <Gantt
+              TaskListHeader={taskList.header}
+              TaskListTable={taskList.table}
+              arrowColor="#52615d"
+              barCornerRadius={4}
+              barFill={62}
+              columnWidth={GANTT_COLUMN_WIDTH}
+              fontFamily="Inter, ui-sans-serif, system-ui, sans-serif"
+              fontSize="12px"
+              listCellWidth={`${String(GANTT_LIST_WIDTH_PX)}px`}
+              onClick={(task) => {
+                openTask(task.id);
+              }}
+              onDateChange={handleDateChange}
+              onDoubleClick={(task) => {
+                openTask(task.id);
+              }}
+              onProgressChange={() => false}
+              rowHeight={48}
+              tasks={[...libraryTasks]}
+              todayColor="rgba(23, 107, 77, 0.08)"
+              viewMode={ViewMode.Day}
+            />
+          </div>
         </div>
       )}
       {panel !== null && (panel.kind === 'new' || editedTask !== undefined) ? (

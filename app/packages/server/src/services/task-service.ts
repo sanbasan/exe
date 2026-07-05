@@ -207,7 +207,9 @@ export const createTaskService = ({
         throw notFoundError(`Task ${patch.taskId} was not found.`);
       }
 
-      assertTaskParticipant({ slackUserId: linkedSlackUser.slackUserId, task });
+      // Any workspace member may patch any task: the web Gantt lists the whole
+      // workspace and reschedules/reassigns other people's tasks by design, so
+      // no participant check here (unlike getTaskForUser).
       const visibility = await channelVisibility.getVisibilityForSlackUser({
         slackUserId: linkedSlackUser.slackUserId,
         workspace,

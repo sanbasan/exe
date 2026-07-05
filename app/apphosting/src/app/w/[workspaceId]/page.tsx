@@ -26,6 +26,7 @@ const WorkspacePage = (): JSX.Element => {
   const { workspaceId } = params;
   const { loading: authLoading, user } = useAuth();
   const [tab, setTab] = useState<TabId>('gantt');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [workspaceName, setWorkspaceName] = useState('');
   const [pinnedMeetingId, setPinnedMeetingId] = useState('');
   const data = useWorkspaceData({
@@ -71,16 +72,16 @@ const WorkspacePage = (): JSX.Element => {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-line bg-white/85 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-3">
+        <div className="relative mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <div className="flex items-baseline gap-3">
             <span className="text-xl font-bold lowercase tracking-tight text-accent">
               exe
             </span>
-            <span className="text-sm font-medium text-muted">
+            <span className="hidden text-sm font-medium text-muted md:inline">
               {workspaceName === '' ? workspaceId : workspaceName}
             </span>
           </div>
-          <nav className="flex items-center gap-1 rounded-lg border border-line bg-canvas p-1">
+          <nav className="hidden items-center gap-1 rounded-lg border border-line bg-canvas p-1 md:flex">
             {TABS.map((entry) => (
               <button
                 className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition ${
@@ -99,7 +100,7 @@ const WorkspacePage = (): JSX.Element => {
             ))}
           </nav>
           <button
-            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:text-ink"
+            className="hidden rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition hover:text-ink md:block"
             onClick={() => {
               void signOutHelper().then(() => {
                 router.replace('/login');
@@ -109,9 +110,67 @@ const WorkspacePage = (): JSX.Element => {
           >
             Sign out
           </button>
+          <button
+            aria-expanded={menuOpen}
+            aria-label="Menu"
+            className="rounded-lg border border-line p-2 text-muted transition hover:text-ink md:hidden"
+            onClick={() => {
+              setMenuOpen((previous) => !previous);
+            }}
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeWidth={1.8}
+              viewBox="0 0 24 24"
+            >
+              {menuOpen ? (
+                <path d="M6 6l12 12M18 6L6 18" />
+              ) : (
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              )}
+            </svg>
+          </button>
+          {menuOpen ? (
+            <div className="absolute right-4 top-full z-40 mt-1 w-48 rounded-xl border border-line bg-white p-1.5 shadow-lg md:hidden">
+              {TABS.map((entry) => (
+                <button
+                  className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                    tab === entry.id
+                      ? 'bg-accent-soft text-accent'
+                      : 'text-ink hover:bg-canvas'
+                  }`}
+                  key={entry.id}
+                  onClick={() => {
+                    setTab(entry.id);
+                    setMenuOpen(false);
+                  }}
+                  type="button"
+                >
+                  {entry.label}
+                </button>
+              ))}
+              <div className="my-1.5 border-t border-line" />
+              <button
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-muted transition hover:bg-canvas hover:text-ink"
+                onClick={() => {
+                  void signOutHelper().then(() => {
+                    router.replace('/login');
+                  });
+                }}
+                type="button"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : null}
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-6 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         {data.error !== null ? (
           <p className="mb-4 text-sm text-danger">{data.error}</p>
         ) : null}

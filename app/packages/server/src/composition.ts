@@ -70,6 +70,7 @@ import {
   sendScheduledCallDueNotifications,
   sleepIdleLiveKitVm,
   startOverloadCalls,
+  startOverloadCallsForWorkspace,
   startScheduledCalls,
 } from '#server/workflows';
 import type { CallWorkflowDeps } from '#server/workflows/deps';
@@ -149,6 +150,10 @@ export interface ServerWorkflows {
   readonly sleepIdleLiveKitVm: () => Promise<void>;
   readonly startOverloadCalls: (params: {
     readonly at: string;
+  }) => Promise<void>;
+  readonly startOverloadCallsForWorkspace: (params: {
+    readonly at: string;
+    readonly workspaceId: string;
   }) => Promise<void>;
   readonly startScheduledCalls: (params: {
     readonly at: string;
@@ -388,6 +393,8 @@ export const createServerComposition = (
         sleepIdleLiveKitVm({ deps: workflowDeps }),
       startOverloadCalls: ({ at }): Promise<void> =>
         startOverloadCalls({ at, deps: workflowDeps }),
+      startOverloadCallsForWorkspace: ({ at, workspaceId }): Promise<void> =>
+        startOverloadCallsForWorkspace({ at, deps: workflowDeps, workspaceId }),
       startScheduledCalls: ({ at }): Promise<void> =>
         startScheduledCalls({ at, deps: workflowDeps }),
     },

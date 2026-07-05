@@ -140,3 +140,26 @@ export const toLibraryTasks = ({
   const chartTaskIds = new Set(tasks.map((task) => task.id));
   return tasks.map((task) => toLibraryTask({ chartTaskIds, overloaded, task }));
 };
+
+// Chart geometry shared with GanttTab. chartFullWidthPx reproduces the exact
+// horizontal extent gantt-task-react draws in ViewMode.Day with the default
+// preStepsCount of 1: one padding day before the earliest bar, 19 after the
+// latest, one column per day inclusive of both ends.
+export const GANTT_COLUMN_WIDTH = 36;
+export const GANTT_LIST_WIDTH_PX = 320;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const chartFullWidthPx = (tasks: readonly LibraryTask[]): number => {
+  if (tasks.length === 0) {
+    return GANTT_LIST_WIDTH_PX;
+  }
+  const startMs = Math.min(
+    ...tasks.map((task) => startOfDay(task.start).getTime())
+  );
+  const endMs = Math.max(
+    ...tasks.map((task) => startOfDay(task.end).getTime())
+  );
+  const columns = Math.round((endMs - startMs) / DAY_MS) + 21;
+  return GANTT_LIST_WIDTH_PX + columns * GANTT_COLUMN_WIDTH;
+};

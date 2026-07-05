@@ -111,3 +111,35 @@ export const startOverloadCalls = async ({
     )
   );
 };
+
+// Same check for a single workspace, run right after a recording created
+// tasks so an overloaded assignee gets the call immediately instead of at
+// the next morning cron. The per-person per-local-day claim above still
+// dedupes against that cron.
+export const startOverloadCallsForWorkspace = async ({
+  at,
+  deps,
+  workspaceId,
+}: {
+  readonly at: string;
+  readonly deps: CallWorkflowDeps;
+  readonly workspaceId: string;
+}): Promise<void> => {
+  const run = async (): Promise<void> => {
+    const workspace = await deps.workspaceRepository.getById({ workspaceId });
+
+    if (workspace === null) {
+      return;
+    }
+
+    await runForWorkspace({ at, deps, workspace });
+  };
+
+  await run().catch(
+    (error: unknown): Promise<void> =>
+      deps.errorReporter.report({
+        context: { route: 'workflows/overload-calls-workspace' },
+        error,
+      })
+  );
+};

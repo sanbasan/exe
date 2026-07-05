@@ -38,6 +38,30 @@ import {
   buildScheduledCallRunBlocks,
 } from '@exe/slack';
 
+// Shown as the CallKit caller name on the incoming-call screen; without it
+// iOS falls back to a generic title.
+const incomingCallTitle = ({
+  session,
+  workspace,
+}: {
+  readonly session: CallSession;
+  readonly workspace: Workspace;
+}): string | undefined => {
+  if (session.trigger === 'blocker') {
+    return workspace.language === 'ja'
+      ? 'ブロッカー確認の電話'
+      : 'Blocker check-in';
+  }
+
+  if (session.trigger === 'overload') {
+    return workspace.language === 'ja'
+      ? 'タスク負荷の相談'
+      : 'Workload check-in';
+  }
+
+  return undefined;
+};
+
 const selectTokens = ({
   kind,
   tokens,
@@ -290,12 +314,20 @@ export const createNotificationGateway = ({
       workspace,
       workspaceRepository,
     }).then((): void => undefined),
-  sendIncomingCall: ({ session, tokens }): Promise<readonly string[]> =>
-    sendIncomingCallVoipPushes({
+  sendIncomingCall: ({
+    session,
+    tokens,
+    workspace,
+  }): Promise<readonly string[]> => {
+    const title = incomingCallTitle({ session, workspace });
+
+    return sendIncomingCallVoipPushes({
       config: apns,
       session,
+      ...(title === undefined ? {} : { title }),
       tokens: selectUniqueTokens({ kind: 'voip', tokens }),
-    }),
+    });
+  },
   sendMeetingTasksCreated: ({ channelId, meetingTitle, tasks, workspace }) =>
     sendSlackMeetingTasksCreated({
       channelId,

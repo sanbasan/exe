@@ -113,10 +113,12 @@ const warnApnsEnvironmentFallback = ({
 const sendVoipPush = async ({
   config,
   session,
+  title,
   token,
 }: {
   readonly config: ApnsConfig;
   readonly session: CallSession;
+  readonly title?: string;
   readonly token: DeviceToken;
 }): Promise<VoipPushResult> => {
   if (
@@ -147,6 +149,7 @@ const sendVoipPush = async ({
       body: JSON.stringify({
         callSessionId: session.id,
         liveKitRoomName: session.liveKitRoomName,
+        ...(title === undefined ? {} : { title }),
         type: 'call_session_created',
         workspaceId: session.workspaceId,
       }),
@@ -206,14 +209,23 @@ const sendVoipPush = async ({
 export const sendIncomingCallVoipPushes = async ({
   config,
   session,
+  title,
   tokens,
 }: {
   readonly config: ApnsConfig;
   readonly session: CallSession;
+  readonly title?: string;
   readonly tokens: readonly DeviceToken[];
 }): Promise<readonly string[]> => {
   const results = await Promise.all(
-    tokens.map((token) => sendVoipPush({ config, session, token }))
+    tokens.map((token) =>
+      sendVoipPush({
+        config,
+        session,
+        ...(title === undefined ? {} : { title }),
+        token,
+      })
+    )
   );
 
   return results

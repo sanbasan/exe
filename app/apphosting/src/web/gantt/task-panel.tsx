@@ -117,6 +117,14 @@ export const TaskPanel = ({
               value={form.description}
             />
           </label>
+          {task?.handoffNote === undefined ? null : (
+            <div className="block">
+              <span className={labelClass}>Handoff note</span>
+              <div className="mt-1 w-full whitespace-pre-wrap rounded-lg border border-line bg-canvas px-2.5 py-1.5 text-sm text-ink">
+                {task.handoffNote}
+              </div>
+            </div>
+          )}
           {isNew ? null : (
             <label className="block">
               <span className={labelClass}>Status</span>

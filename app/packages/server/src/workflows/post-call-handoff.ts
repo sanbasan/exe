@@ -102,6 +102,7 @@ const postHandoffNoteToThreadBestEffort = async ({
     run: async ({ botToken }): Promise<void> => {
       await deps.slackGateway.postMessage({
         blocks: buildTaskHandoffNoteBlocks({
+          assigneeSlackUserIds: task.assigneeSlackUserIds,
           language: workspace.language,
           note,
           taskTitle: task.title,
@@ -109,6 +110,7 @@ const postHandoffNoteToThreadBestEffort = async ({
         botToken,
         channelId,
         text: buildTaskHandoffNoteFallbackText({
+          assigneeSlackUserIds: task.assigneeSlackUserIds,
           language: workspace.language,
           taskTitle: task.title,
         }),

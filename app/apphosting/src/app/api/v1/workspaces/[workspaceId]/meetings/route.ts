@@ -32,7 +32,7 @@ export const POST = (
       params,
       parseJsonBody({ request, schema: createMeetingRequestSchema }),
     ]);
-    const { services } = createFirebaseServerComposition();
+    const { services, workflows } = createFirebaseServerComposition();
     const meeting = await services.meeting.createForUser({
       ...(body.channelId === undefined ? {} : { channelId: body.channelId }),
       ...(body.durationSeconds === undefined
@@ -47,14 +47,20 @@ export const POST = (
 
     // Heavy transcription/extraction pipeline runs after the response is sent.
     // process() never rejects; it records failures on the meeting document.
-    after(() =>
-      services.meeting.process({
+    // The overload check runs right after so assignees the recording just
+    // overloaded get their call immediately (deduped against the morning cron).
+    after(async () => {
+      await services.meeting.process({
         audioBase64: body.audioBase64,
         meetingId: meeting.id,
         mimeType: body.mimeType,
         workspaceId,
-      })
-    );
+      });
+      await workflows.startOverloadCallsForWorkspace({
+        at: new Date().toISOString(),
+        workspaceId,
+      });
+    });
 
     return { meeting };
   });

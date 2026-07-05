@@ -32,7 +32,7 @@ export interface ChannelLatestInfoSynthesizer {
 
 export type LatestInfoGenerateContentResponse = Pick<
   GenerateContentResponse,
-  'text'
+  'candidates' | 'text'
 >;
 
 export type LatestInfoGenerateContent = (params: {
