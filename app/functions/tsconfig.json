@@ -1,0 +1,16 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "lib": ["ESNext"],
+    "paths": {
+      "#server/*": ["../packages/server/src/*"],
+      "#slack/*": ["../packages/slack/src/*"],
+      "@exe/domain": ["../packages/domain/src/index.ts"],
+      "@exe/slack": ["../packages/slack/src/index.ts"],
+      "@exe/server": ["../packages/server/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
