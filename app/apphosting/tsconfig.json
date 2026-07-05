@@ -1,0 +1,24 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "preserve",
+    "lib": ["DOM", "ESNext"],
+    "paths": {
+      "#app/*": ["src/*"],
+      "#server/*": ["../packages/server/src/*"],
+      "#slack/*": ["../packages/slack/src/*"],
+      "@exe/domain": ["../packages/domain/src/index.ts"],
+      "@exe/server": ["../packages/server/src/index.ts"],
+      "@exe/slack": ["../packages/slack/src/index.ts"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "src/app/.well-known/**/*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": ["node_modules"]
+}

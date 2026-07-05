@@ -1,0 +1,32 @@
+{
+  "name": "@exe/apphosting",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "next build && sh ./scripts/post-build.sh",
+    "dev": "next dev",
+    "format": "prettier --write 'src/**/*.{ts,tsx}' 'package.json' 'tsconfig.json' 'eslint.config.mjs' 'next.config.mjs'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx}' 'package.json' 'tsconfig.json' 'eslint.config.mjs' 'next.config.mjs'",
+    "lint": "eslint src --max-warnings=0",
+    "start": "next start",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@exe/domain": "0.1.0",
+    "@exe/server": "^0.1.0",
+    "@exe/slack": "^0.1.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "firebase-admin": "^13.10.0",
+    "next": "^16.2.9",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  }
+}
